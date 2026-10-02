@@ -8,7 +8,7 @@
   <name>EPL Librarian</name>
   <description>EPL Librarian</description>
   <scm>
-    <developerConnection>scm:git:https://github.com/Verdoso/${project.artifactId}</developerConnection>
+    <developerConnection>scm:git:https://github.com/Tofax/${project.artifactId}.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
   <parent>
