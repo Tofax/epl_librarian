@@ -14,7 +14,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -210,46 +212,57 @@ public class BibliotecaService {
       updateCalibre(false);
       log.info("Recopilando autores...");
       autores.clear();
-      autores.addAll(libreria.stream()
-          .map(Libro::getAutor)
-          .flatMap(autor -> Stream.of(autor.split(" & ")))
+      Map<String, Integer> autoresLibros = new HashMap<>();
+      Map<String, String> nombresAutores = new HashMap<>();
+      libros.forEach(libro -> libro.getListaAutores()
+          .stream()
           .map(String::trim)
-          .distinct()
-          .map(nombre -> {
-            try (final ResultSet<Libro> queryResult = libreria.retrieve(in(Libro.LIBRO_AUTORES, Libro.flattenToAscii(nombre)))) {
-              return new Autor(nombre, queryResult.size());
-            }
-          })
+          .forEach(nombre -> {
+            String clave = Libro.flattenToAscii(nombre);
+            nombresAutores.putIfAbsent(clave, nombre);
+            autoresLibros.merge(clave, 1, Integer::sum);
+          }));
+      autores.addAll(autoresLibros.entrySet()
+          .stream()
+          .map(entry -> new Autor(nombresAutores.get(entry.getKey()), entry.getValue()))
           .toList());
       //
       log.info("Autores recopilados.");
       log.info("Recopilando generos...");
       generos.clear();
-      generos.addAll(libreria.stream()
-          .flatMap(libro -> libro.getListaGeneros()
-              .stream())
+      Map<String, Integer> generosLibros = new HashMap<>();
+      Map<String, String> nombresGeneros = new HashMap<>();
+      libros.forEach(libro -> libro.getListaGeneros()
+          .stream()
           .map(String::trim)
-          .distinct()
-          .map(nombre -> {
-            try (final ResultSet<Libro> queryResult = libreria.retrieve(in(Libro.LIBRO_GENEROS, Libro.flattenToAscii(nombre)))) {
-              return new Genero(nombre, queryResult.size());
-            }
-          })
-          .collect(Collectors.toList()));
+          .forEach(nombre -> {
+            String clave = Libro.flattenToAscii(nombre);
+            nombresGeneros.putIfAbsent(clave, nombre);
+            generosLibros.merge(clave, 1, Integer::sum);
+          }));
+      generos.addAll(generosLibros.entrySet()
+          .stream()
+          .map(entry -> new Genero(nombresGeneros.get(entry.getKey()), entry.getValue()))
+          .toList());
       //
       log.info("Géneros recopilados.");
       log.info("Recopilando idiomas...");
       idiomas.clear();
-      idiomas.addAll(libreria.stream()
+      Map<String, Integer> idiomasLibros = new HashMap<>();
+      Map<String, String> nombresIdiomas = new HashMap<>();
+      libros.stream()
           .map(Libro::getIdioma)
+          .filter(Objects::nonNull)
           .map(String::trim)
-          .distinct()
-          .map(nombre -> {
-            try (final ResultSet<Libro> queryResult = libreria.retrieve(contains(Libro.LIBRO_IDIOMA, Libro.flattenToAscii(nombre)))) {
-              return new Idioma(nombre, queryResult.size());
-            }
-          })
-          .collect(Collectors.toList()));
+          .forEach(nombre -> {
+            String clave = Libro.flattenToAscii(nombre);
+            nombresIdiomas.putIfAbsent(clave, nombre);
+            idiomasLibros.merge(clave, 1, Integer::sum);
+          });
+      idiomas.addAll(idiomasLibros.entrySet()
+          .stream()
+          .map(entry -> new Idioma(nombresIdiomas.get(entry.getKey()), entry.getValue()))
+          .toList());
       //
       log.info("Idiomas recopilados.");
       //
