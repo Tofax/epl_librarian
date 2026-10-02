@@ -104,7 +104,7 @@ public class DataLoaderService implements ApplicationRunner, EnvironmentAware {
     return updateSpec.isNewData();
   }
 
-  @Scheduled(fixedDelayString = "${actualizacion_periodo_ms:86400000}", initialDelayString = "${actualizacion_inicial_delay_ms:86400000}")
+  @Scheduled(cron = "${actualizacion_cron:0 30 4 * * *}", zone = "${actualizacion_zona:Europe/Madrid}")
   public synchronized void actualizarPeriodicamente() {
     if (!actualizacionAutomatica) {
       return;
