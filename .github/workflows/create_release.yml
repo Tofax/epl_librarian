@@ -57,7 +57,7 @@ jobs:
         draft: false
         prerelease: false
         generate_release_notes: true
-        token: "${{ secrets.ACTION_TOKEN }}"
+        token: "${{ github.token }}"
         files: |
           ./target/epl_librarian-${{ env.RELEASE_VERSION }}.zip    
 
