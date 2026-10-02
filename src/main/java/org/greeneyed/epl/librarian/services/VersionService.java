@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class VersionService {
-  private static final String README_URL = "https://raw.githubusercontent.com/Verdoso/epl_librarian/master/README.md";
+  private static final String README_URL = "https://raw.githubusercontent.com/tofinho/epl_librarian/master/README.md";
 
   private final PreferencesService preferencesService;
 
