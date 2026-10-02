@@ -19,6 +19,7 @@ import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
 
@@ -64,11 +65,8 @@ public class DataLoaderService implements ApplicationRunner, EnvironmentAware {
     }
   }
 
-  public boolean loadData() throws IOException {
+  public synchronized boolean loadData() throws IOException {
     log.info("Inicializando datos...");
-    //
-    bibliotecaService.clean();
-    //
     boolean comprobaremosActualizacionAutomatica = actualizacionAutomatica;
     log.info("descargarDeEPL: {}, actualizacionAutomatica: {} ", descargarDeEPL, actualizacionAutomatica);
     StopWatch timeMeasure = new StopWatch();
@@ -97,13 +95,26 @@ public class DataLoaderService implements ApplicationRunner, EnvironmentAware {
     if (updateSpec.isEmpty()) {
       throw new IOException("Sin datos, para qu\u00e9 arrancar.");
     } else {
-        log.info("Preparando {} libros de la descarga con fecha {}", updateSpec.getLibroCSVs()
-            .size(), DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(updateSpec.getFechaActualizacion()));
-        bibliotecaService.update(updateSpec);
+      log.info("Preparando {} libros de la descarga con fecha {}", updateSpec.getLibroCSVs()
+          .size(), DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(updateSpec.getFechaActualizacion()));
+      bibliotecaService.update(updateSpec);
       timeMeasure.stop();
       log.info("EPL Librarian inicializado en ~{}s", (int) timeMeasure.getTotalTimeSeconds());
     }
     return updateSpec.isNewData();
+  }
+
+  @Scheduled(fixedDelayString = "${actualizacion_periodo_ms:86400000}", initialDelayString = "${actualizacion_inicial_delay_ms:86400000}")
+  public synchronized void actualizarPeriodicamente() {
+    if (!actualizacionAutomatica) {
+      return;
+    }
+    try {
+      log.info("Comprobando actualización automática programada...");
+      loadData();
+    } catch (Exception e) {
+      log.error("Error en la actualización automática programada", e);
+    }
   }
 
   private void abrirEnNavegador() {
