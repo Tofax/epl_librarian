@@ -1,7 +1,7 @@
 <template>
   <section>
     <p class="control" v-if="this.$store.state.calibreIntegration">
-      <b-switch v-model="calibre" @input="loadAsyncData()">Mi biblioteca calibre</b-switch>
+      <b-switch v-model="calibre" @input="loadAsyncData()">La meva biblioteca de Calibre</b-switch>
     </p>
     <Doughnut :chart-options="chartOptions" :chart-data="chartData" :chart-id="chartId" :dataset-id-key="datasetIdKey"
       :plugins="plugins" :css-classes="cssClasses" :styles="styles" :width="width" :height="height" />

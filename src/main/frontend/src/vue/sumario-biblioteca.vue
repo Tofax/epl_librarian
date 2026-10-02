@@ -2,7 +2,7 @@
     <section class="summary">
         <table class="brief_summary" v-if="this.sumario">
             <caption>
-                Sumario <small>- {{ Intl.DateTimeFormat('es', {
+                Resum <small>- {{ Intl.DateTimeFormat('ca-ES', {
                     timeStyle: "short", dateStyle:
                         "medium"
                 }).format(this.fechaActualizacion) }}</small>
@@ -26,7 +26,7 @@
                 </td>
             </tr>
             <tr>
-                <th>Generos</th>
+                <th>Gèneres</th>
                 <td align="right">
                     {{ Intl.NumberFormat('ca').format(this.sumario.generos) }}
                 </td>
@@ -37,14 +37,14 @@
             <b-button :class="this.$store.state.calibreIntegration ? 'button is-link' : 'button is-light'"
                 :loading="actualizando" :disabled="!this.$store.state.calibreIntegration" @click="actualizar()">
                 <b-icon pack="fa" :icon="this.$store.state.calibreIntegration ? 'check' : 'times'"></b-icon>
-                <span>Integración con Calibre</span>
+                <span>Integració amb Calibre</span>
             </b-button>
         </div>
         <div class="brief_summary" v-if="this.$store.state.eplReloadEnabled">
             <b-button :class="this.$store.state.eplReloadEnabled ? 'button is-warning' : 'button is-warning'"
                 :loading="actualizando" @click="recargarDatos()">
                 <b-icon pack="fa" :icon="this.$store.state.eplReloadEnabled ? 'check' : 'times'"></b-icon>
-                <span>Recargar biblioteca</span>
+                <span>Recarrega la biblioteca</span>
             </b-button>
         </div>
     </section>
@@ -82,7 +82,7 @@ export default {
                 this.$buefy.notification.open({
                     type: 'is-danger'
                     , duration: 5000
-                    , message: 'Error mostrando sumario: ' + e
+                    , message: 'Error en mostrar el resum: ' + e
                     , hasIcon: true
                 })
                 console.error(e)
@@ -99,7 +99,7 @@ export default {
                         this.$buefy.notification.open({
                             type: 'is-info'
                             , duration: 3000
-                            , message: 'Recargados los datos de la biblioteca.'
+                            , message: 'S’han recarregat les dades de la biblioteca.'
                             , hasIcon: true
                         });
                     })
@@ -109,7 +109,7 @@ export default {
                             this.$buefy.notification.open({
                                 type: 'is-warning'
                                 , duration: 3000
-                                , message: 'No se han obtenido nuevos datos para la biblioteca.'
+                                , message: 'No s’han obtingut dades noves per a la biblioteca.'
                                 , hasIcon: true
                             });
                         } else {
@@ -117,7 +117,7 @@ export default {
                             this.$buefy.notification.open({
                                 type: 'is-error'
                                 , duration: 3000
-                                , message: 'Error recargando los datos de la biblioteca.'
+                                , message: 'Error en recarregar les dades de la biblioteca.'
                                 , hasIcon: true
                             });
                             this.$nextTick(() => {
@@ -137,7 +137,7 @@ export default {
                         this.$buefy.notification.open({
                             type: 'is-info'
                             , duration: 3000
-                            , message: 'Sincronización con Calibre finalizada correctamente.'
+                            , message: 'La sincronització amb Calibre ha finalitzat correctament.'
                             , hasIcon: true
                         });
                     })
@@ -147,7 +147,7 @@ export default {
                         this.$buefy.notification.open({
                             type: 'is-error'
                             , duration: 3000
-                            , message: 'Error sincronizando con Calibre.'
+                            , message: 'Error en sincronitzar amb Calibre.'
                             , hasIcon: true
                         });
                         this.$nextTick(() => {

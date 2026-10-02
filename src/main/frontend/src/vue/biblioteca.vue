@@ -1,13 +1,13 @@
 <template>
   <section>
     <div id="fecha_base">
-      <b-field grouped label="Fecha corte de las novedades" horizontal>        
+      <b-field grouped label="Data de tall de les novetats" horizontal>
         <b-datepicker
-          placeholder="Selecciona una fecha para filtrar"
+          placeholder="Seleccioneu una data per filtrar"
           icon="calendar-today"
           :first-day-of-week="1"
           :day-names="['D', 'L', 'M', 'X', 'J', 'V', 'S']"
-          :month-names="['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']"
+          :month-names="['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre']"
           trap-focus
           v-model="fechaBase"
           @input="cambioFechaNovedades()"
@@ -15,14 +15,14 @@
         >
           <button class="button is-primary" @click="fechaBaseHoy()">
             <b-icon icon="calendar-today"></b-icon>
-            <span>hoy</span>
+            <span>avui</span>
           </button>
         </b-datepicker>
       </b-field>      
     </div>
     <div id="numero_por_pagina">
         <b-field
-            label="Por pàgina"
+            label="Per pàgina"
             horizontal
         >
             <b-select v-model="perPage" @change="cambioPorPagina">
@@ -50,10 +50,10 @@
       backend-sorting
       backend-filtering
       pagination-position="both"
-      aria-next-label="Next page"
-      aria-previous-label="Previous page"
-      aria-page-label="Page"
-      aria-current-label="Current page"
+      aria-next-label="Pàgina següent"
+      aria-previous-label="Pàgina anterior"
+      aria-page-label="Pàgina"
+      aria-current-label="Pàgina actual"
       @filters-change="onFilterChange"
       @page-change="onPageChange"
       @sort="onSort"
@@ -74,7 +74,7 @@
       </b-table-column>
       <b-table-column
         field="POR_TITULO"
-        label="Titulo"
+        label="Títol"
         searchable
         sortable
         width="25%"
@@ -82,7 +82,7 @@
         <template #searchable="props">
           <b-input
             v-model="props.filters[props.column.field]"
-            placeholder="titulo..."
+            placeholder="títol..."
             icon-right="close-circle"
             icon-right-clickable
             @icon-right-click="clearTituloFilter(props)"
@@ -95,7 +95,7 @@
 
       <b-table-column
         field="POR_COLECCION"
-        label="Coleccion"
+        label="Col·lecció"
         sortable
         searchable
         width="20%"
@@ -103,7 +103,7 @@
         <template #searchable="props">
           <b-input
             v-model="props.filters[props.column.field]"
-            placeholder="colección..."
+            placeholder="col·lecció..."
             icon-right="close-circle"
             icon-right-clickable
             @icon-right-click="clearColeccionFilter(props)"
@@ -118,7 +118,7 @@
         <template v-slot:header="{ column }">
           {{ column.label }}
           <br/>
-          <b-tooltip class="onlyFilter" :label="soloAutoresFavoritos?'Click para todos los autores':'Click para solo autores favoritos'" position="is-left" dashed>
+          <b-tooltip class="onlyFilter" :label="soloAutoresFavoritos?'Feu clic per veure tots els autors':'Feu clic per veure només els autors preferits'" position="is-left" dashed>
             <b-switch v-model="soloAutoresFavoritos" @input="cambioAutoresFavoritos()" />          
           </b-tooltip>
         </template>
@@ -146,7 +146,7 @@
         <template v-slot:header="{ column }">
           {{ column.label }}
           <br/>
-          <b-tooltip class="onlyFilter" :label="soloIdiomasFavoritos?'Click para todos los idiomas':'Click para solo idiomas favoritos'" position="is-left" dashed>
+          <b-tooltip class="onlyFilter" :label="soloIdiomasFavoritos?'Feu clic per veure tots els idiomes':'Feu clic per veure només els idiomes preferits'" position="is-left" dashed>
             <b-switch v-model="soloIdiomasFavoritos" @input="cambioIdiomasFavoritos()"/>          
           </b-tooltip>
         </template>
@@ -164,18 +164,18 @@
         </template>
       </b-table-column>
 
-      <b-table-column field="POR_GENERO" label="Generos" searchable width="20%">
+      <b-table-column field="POR_GENERO" label="Gèneres" searchable width="20%">
         <template v-slot:header="{ column }">
           {{ column.label }}
           <br/>
-          <b-tooltip class="onlyFilter" :label="soloGenerosFavoritos?'Click para todos los géneros':'Click para solo géneros favoritos'" position="is-top" dashed>
+          <b-tooltip class="onlyFilter" :label="soloGenerosFavoritos?'Feu clic per veure tots els gèneres':'Feu clic per veure només els gèneres preferits'" position="is-top" dashed>
             <b-switch v-model="soloGenerosFavoritos" @input="cambioGenerosFavoritos()" />          
           </b-tooltip>
         </template>
         <template #searchable="props">
           <b-input
             v-model="props.filters[props.column.field]"
-            placeholder="genero..."
+            placeholder="gènere..."
             icon-right="close-circle"
             icon-right-clickable
             @icon-right-click="clearGeneroFilter(props)"
@@ -194,14 +194,14 @@
 
       <b-table-column
         field="POR_PUBLICADO"
-        label="En epub."
+        label="A ePub"
         sortable
         width="5em"
       >
         <template v-slot:header="{ column }">
           {{ column.label }}
           <br/>
-          <b-tooltip v-if="fechaBase" class="onlyFilter" :label="soloNovedades?'Mostrando novedades posteriores a ' + fechaBase.toLocaleDateString() + ', click para mostrar todos los libros':'Click para mostrar las novedades posteriores a ' + fechaBase.toLocaleDateString()" position="is-top" dashed>
+          <b-tooltip v-if="fechaBase" class="onlyFilter" :label="soloNovedades?'Mostrant les novetats posteriors a ' + fechaBase.toLocaleDateString('ca-ES') + '; feu clic per mostrar tots els llibres':'Feu clic per mostrar les novetats posteriors a ' + fechaBase.toLocaleDateString('ca-ES')" position="is-top" dashed>
             <b-switch v-model="soloNovedades" @input="cambioNovedades()"/>          
           </b-tooltip>
         </template>
@@ -225,7 +225,7 @@
         <template v-slot:header="{ column }">
           {{ column.label }}
           <br/>
-          <b-tooltip class="onlyFilter" :label="soloNoEnPropiedad?'Click para mostrar también los que tengo':'Click para ocultar los que tengo'" position="is-left" dashed>
+          <b-tooltip class="onlyFilter" :label="soloNoEnPropiedad?'Feu clic per mostrar també els que ja teniu':'Feu clic per amagar els que ja teniu'" position="is-left" dashed>
           <b-switch v-model="soloNoEnPropiedad" @input="cambioSoloNoEnPropiedad()" v-if="integracioncalibre"/>          
           </b-tooltip>
         </template>
@@ -248,7 +248,7 @@
         <template v-slot:header="{ column }">
           {{ column.label }}
           <br/>
-          <b-tooltip class="onlyFilter" :label="ocultarDescartados?'Click para mostrar también los descartados':'Click para ocultar los descartados'" position="is-left" dashed>
+          <b-tooltip class="onlyFilter" :label="ocultarDescartados?'Feu clic per mostrar també els descartats':'Feu clic per amagar els descartats'" position="is-left" dashed>
           <b-switch v-model="ocultarDescartados" @input="cambioOcultarDescartados()" />          
           </b-tooltip>
         </template>
@@ -280,7 +280,7 @@
             <div class="content">
               <strong>{{ props.row.titulo }}</strong>
               -
-              <small>v.{{ props.row.revision }} - {{ props.row.paginas }} pàginas ( {{props.row.autor}} ) - Publicado en {{ props.row.anyoPublicacion }}</small>
+              <small>v.{{ props.row.revision }} - {{ props.row.paginas }} pàgines ( {{props.row.autor}} ) - Publicat l’any {{ props.row.anyoPublicacion }}</small>
               <hr />
               <br />
               {{props.row.sinopsis}}
@@ -295,7 +295,7 @@
                     icon-pack="fa"
                     icon-left="book"
                     target="_blank"
-                  >En ePubLibre</b-button>
+                  >A ePubLibre</b-button>
                 </p>
                 <span v-if="props.row.magnetId">
                   <p
@@ -309,7 +309,7 @@
                       type="is-link"
                       icon-pack="fa"
                       icon-left="magnet"
-                    >Descarga {{ props.row.magnet_ids.length > 1 ? index + 1 : ''}}</b-button>
+                    >Baixa {{ props.row.magnet_ids.length > 1 ? index + 1 : ''}}</b-button>
                   </p>
                 </span>
               </b-field>
@@ -327,11 +327,11 @@ import axios from "axios";
 import Vuex from "vuex";
 import Bottleneck from "bottleneck";
 import { EventBus } from '../event-bus';
-import es from 'javascript-time-ago/locale/es'
+import ca from 'javascript-time-ago/locale/ca'
 
 Vue.use(Vuex);
 import TimeAgo from 'javascript-time-ago'
-TimeAgo.addLocale(es)
+TimeAgo.addLocale(ca)
 
 const limiter = new Bottleneck({
   maxConcurrent: 1,
@@ -366,7 +366,7 @@ export default {
       soloNoEnPropiedad: false,
       ocultarDescartados: false,
       fechaBase: null,
-      timeAgo: new TimeAgo('es-ES'),
+      timeAgo: new TimeAgo('ca'),
     };
   },
   computed: {
@@ -526,7 +526,7 @@ export default {
           this.$buefy.notification.open({
             type: "is-info",
             duration: 2000,
-            message: `${libro.titulo} ${libro.descartado? 'descartado' : 'mostrado'}`,
+            message: `${libro.titulo} ${libro.descartado? 'descartat' : 'mostrat'}`,
             hasIcon: true
           });
           if (libro.descartado && this.ocultarDescartados) {
@@ -537,7 +537,7 @@ export default {
           this.$buefy.notification.open({
             type: "is-danger",
             duration: 2000,
-            message: "Error descartando libro: " + error,
+            message: "Error en descartar el llibre: " + error,
             hasIcon: true
           });
           throw error;
@@ -555,9 +555,9 @@ export default {
             this.$buefy.notification.open({
               type: "is-info",
               duration: 5000,
-              message: `Fecha base ${new Intl.DateTimeFormat("es").format(
+              message: `La data base ${new Intl.DateTimeFormat("ca-ES").format(
                 this.fechaBase
-              )} almacenada en las preferencias`,
+              )} s’ha desat a les preferències`,
               hasIcon: true
             });
             if (this.soloNovedades) {
@@ -568,7 +568,7 @@ export default {
             this.$buefy.notification.open({
               type: "is-danger",
               duration: 5000,
-              message: "Error almacenando fecha base: " + error,
+            message: "Error en desar la data base: " + error,
               hasIcon: true
             });
             throw error;

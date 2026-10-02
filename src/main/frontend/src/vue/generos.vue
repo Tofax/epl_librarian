@@ -6,7 +6,7 @@
           <b-switch
             v-model="soloGenerosFavoritos"
             @input="cambioGenerosFavoritos()"
-          >Solo géneros favoritos</b-switch>
+          >Només gèneres preferits</b-switch>
         </p>
       </b-field>
     </div>
@@ -27,10 +27,10 @@
       backend-sorting
       backend-filtering
       pagination-position="top"
-      aria-next-label="Next page"
-      aria-previous-label="Previous page"
-      aria-page-label="Page"
-      aria-current-label="Current page"
+      aria-next-label="Pàgina següent"
+      aria-previous-label="Pàgina anterior"
+      aria-page-label="Pàgina"
+      aria-current-label="Pàgina actual"
       @filters-change="onFilterChange"
       @page-change="onPageChange"
       @sort="onSort"
@@ -38,7 +38,7 @@
     >
       <b-table-column field="POR_GENERO" label="Nombre" sortable searchable v-slot="props">{{ props.row.nombre }}</b-table-column>
 
-      <b-table-column field="POR_LIBROS" label="# libros" sortable v-slot="props">{{ props.row.libros }}</b-table-column>
+      <b-table-column field="POR_LIBROS" label="# llibres" sortable v-slot="props">{{ props.row.libros }}</b-table-column>
     </b-table>
   </section>
 </template>
@@ -185,7 +185,7 @@ export default {
           this.$buefy.notification.open({
             type: "is-danger",
             duration: 5000,
-            message: "Error almacenando genero favoritos: " + e,
+            message: "Error en desar els gèneres preferits: " + e,
             hasIcon: true
           });
           throw error;

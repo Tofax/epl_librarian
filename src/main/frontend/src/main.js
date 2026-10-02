@@ -111,7 +111,7 @@ var app = new Vue({
              this.$buefy.notification.open({
                  type: 'is-info'
                  , duration: 5000
-                 , message:'La aplicación ha sido notificada, ya puede cerrar esta ventana.'
+                 , message:'S’ha notificat l’aplicació; ja podeu tancar aquesta finestra.'
                  , hasIcon: true
              })
           })
@@ -119,7 +119,7 @@ var app = new Vue({
              this.$buefy.notification.open({
                  type: 'is-danger'
                  , duration: 5000
-                 , message:'Error notificando aplicación: ' + e
+                 , message:'Error en notificar l’aplicació: ' + e
                  , hasIcon: true
              })
              console.error(e)

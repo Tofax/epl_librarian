@@ -4,7 +4,7 @@
         <b-tab-item label="Autores" icon="address-card-o" icon-pack="fa">
           <autores-chart />
         </b-tab-item>
-        <b-tab-item label="Generos" icon="sitemap" icon-pack="fa">
+        <b-tab-item label="Gèneres" icon="sitemap" icon-pack="fa">
           <generos-chart />
         </b-tab-item>
         <b-tab-item label="Idiomas" icon="flag" icon-pack="fa">
