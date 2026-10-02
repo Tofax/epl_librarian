@@ -43,7 +43,7 @@ const store = new Vuex.Store({
   lastupdate: null,
   autorfilter: '',
   generofilter: '',
-  idiomafilter: '',
+  idiomafilter: 'Catalán',
   buildVersion: null,
   latestVersion: null,
   calibreIntegration: false,
