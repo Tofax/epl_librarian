@@ -564,7 +564,8 @@ public class PreferencesService implements EnvironmentAware {
   public ValoresPorDefecto getValoresPorDefecto() {
     readLock.lock();
     try {
-      return new ValoresPorDefecto(idiomasPreferidosMarcado, autoresPreferidosMarcado, generosPreferidosMarcado, descartadosOcultosMarcado, soloNoEnPropiedadMarcado);
+      return new ValoresPorDefecto(idiomasPreferidosMarcado, autoresPreferidosMarcado, generosPreferidosMarcado, descartadosOcultosMarcado,
+          soloNoEnPropiedadMarcado);
     } finally {
       readLock.unlock();
     }

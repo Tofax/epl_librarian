@@ -65,13 +65,15 @@ public class LibrarianAPIController {
   public ResponseEntity<String> updateData() {
     try {
       boolean newData = dataLoaderService.loadData();
-      if(newData) {
+      if (newData) {
         return ResponseEntity.ok("OK");
       } else {
-        return ResponseEntity.status(HttpStatus.NOT_MODIFIED_304).build();
+        return ResponseEntity.status(HttpStatus.NOT_MODIFIED_304)
+            .build();
       }
     } catch (IOException e) {
-      return ResponseEntity.internalServerError().body(e.getMessage());
+      return ResponseEntity.internalServerError()
+          .body(e.getMessage());
     }
   }
 

@@ -14,7 +14,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Reader;
 import java.io.Serializable;
-import java.io.StringReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -46,7 +45,6 @@ import java.util.zip.ZipInputStream;
 import javax.net.ssl.SSLContext;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.config.RequestConfig;
@@ -275,12 +273,12 @@ public class EplCSVProcessor implements EnvironmentAware {
           LocalDateTime fechaActualizacion = mostrarDatosFicheroAProcesar(nextEntry);
           ColumnPositionMappingStrategy<LibroCSV> ms = new ColumnPositionMappingStrategy<>();
           ms.setType(LibroCSV.class);
-          // TODO Hack while EPL does not fix their broken CSV
-          String targetString = IOUtils.toString(theReader);
-          targetString = targetString.replaceAll("\\.jpg\"\"", ".jpg\"");
-          //
-          try (StringReader theSR = new StringReader(targetString)) {
-            CsvToBean<LibroCSV> cb = new CsvToBeanBuilder<LibroCSV>(theSR).withType(LibroCSV.class)
+          // TODO Hack while EPL does not fix their broken CSV. Apply the
+          // correction while reading instead of copying the whole CSV into a
+          // String; the catalogue is large enough for that copy to exhaust
+          // the heap in Docker.
+          try (Reader correctedReader = new ReplacingReader(theReader, ".jpg\"\"", ".jpg\"")) {
+            CsvToBean<LibroCSV> cb = new CsvToBeanBuilder<LibroCSV>(correctedReader).withType(LibroCSV.class)
                 .withMappingStrategy(ms)
                 .withSkipLines(1)
                 .build();
@@ -318,6 +316,84 @@ public class EplCSVProcessor implements EnvironmentAware {
       log.info("No hay fichero en el classpath");
     }
     return updateSpec;
+  }
+
+  /**
+   * Reader that replaces a literal sequence without materialising the whole
+   * input. The replacement is intentionally literal: it preserves the old CSV
+   * workaround while keeping memory usage bounded by the parser buffers.
+   */
+  private static final class ReplacingReader extends Reader {
+    private final Reader delegate;
+    private final String search;
+    private final String replacement;
+    private String pending = "";
+
+    private ReplacingReader(Reader delegate, String search, String replacement) {
+      this.delegate = delegate;
+      this.search = search;
+      this.replacement = replacement;
+    }
+
+    @Override
+    public int read() throws IOException {
+      if (!pending.isEmpty()) {
+        int result = pending.charAt(0);
+        pending = pending.substring(1);
+        return result;
+      }
+
+      int first = delegate.read();
+      if (first < 0 || first != search.charAt(0)) {
+        return first;
+      }
+
+      char[] candidate = new char[search.length() - 1];
+      int read = 0;
+      while (read < candidate.length) {
+        int count = delegate.read(candidate, read, candidate.length - read);
+        if (count < 0) {
+          break;
+        }
+        read += count;
+      }
+      String suffix = new String(candidate, 0, read);
+      if (read == candidate.length && search.substring(1)
+          .equals(suffix)) {
+        pending = replacement.substring(1);
+      } else {
+        pending = suffix;
+      }
+      return replacement.charAt(0) == search.charAt(0) ? replacement.charAt(0) : first;
+    }
+
+    @Override
+    public int read(char[] buffer,
+        int offset,
+        int length) throws IOException {
+      if (length == 0) {
+        return 0;
+      }
+      int first = read();
+      if (first < 0) {
+        return -1;
+      }
+      buffer[offset] = (char) first;
+      int count = 1;
+      while (count < length) {
+        int next = read();
+        if (next < 0) {
+          break;
+        }
+        buffer[offset + count++] = (char) next;
+      }
+      return count;
+    }
+
+    @Override
+    public void close() throws IOException {
+      delegate.close();
+    }
   }
 
   private LocalDateTime mostrarDatosFicheroAProcesar(ZipEntry nextEntry) {
