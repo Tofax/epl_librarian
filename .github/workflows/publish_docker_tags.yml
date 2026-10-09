@@ -34,4 +34,4 @@ jobs:
           -Djib.to.auth.password=${{ secrets.DOCKER_PASSWORD }}
           -Djib.to.image=${{ secrets.DOCKER_USERNAME }}/epl_librarian
           -Djib.to.tags=${{ inputs.version }},v${{ inputs.version }}
-          jib:build
+          compile jib:build
