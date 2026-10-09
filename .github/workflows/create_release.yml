@@ -65,4 +65,4 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.ACTION_TOKEN }}
       run: |
-        mvn -B -Pdocker -Djib.to.auth.username=${{ secrets.DOCKER_USERNAME}} -Djib.from.auth.username=${{ secrets.DOCKER_USERNAME }} -Djib.from.auth.password=${{ secrets.DOCKER_PASSWORD }} -Djib.to.auth.password=${{ secrets.DOCKER_PASSWORD }} jib:build
+        mvn -B -Pdeployment -Pdocker -Djib.to.auth.username=${{ secrets.DOCKER_USERNAME}} -Djib.from.auth.username=${{ secrets.DOCKER_USERNAME }} -Djib.from.auth.password=${{ secrets.DOCKER_PASSWORD }} -Djib.to.auth.password=${{ secrets.DOCKER_PASSWORD }} -Djib.to.image=${{ secrets.DOCKER_USERNAME }}/epl_librarian -Djib.to.tags=${{ env.RELEASE_VERSION }},v${{ env.RELEASE_VERSION }} jib:build

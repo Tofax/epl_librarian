@@ -1,0 +1,37 @@
+name: Publish Docker version tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version whose tag should be published
+        required: true
+        default: 1.17.49
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: v${{ inputs.version }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Publish Docker tags
+        run: >-
+          mvn -B -Pdeployment -Pdocker
+          -Djib.to.auth.username=${{ secrets.DOCKER_USERNAME }}
+          -Djib.from.auth.username=${{ secrets.DOCKER_USERNAME }}
+          -Djib.from.auth.password=${{ secrets.DOCKER_PASSWORD }}
+          -Djib.to.auth.password=${{ secrets.DOCKER_PASSWORD }}
+          -Djib.to.image=${{ secrets.DOCKER_USERNAME }}/epl_librarian
+          -Djib.to.tags=${{ inputs.version }},v${{ inputs.version }}
+          jib:build
