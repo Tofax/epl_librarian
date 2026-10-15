@@ -30,7 +30,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -191,7 +190,7 @@ public class EplCSVProcessor implements EnvironmentAware {
     }
 
     public Duration getAntiguedad() {
-      return Duration.ofHours(fechaActualizacion == null ? Integer.MAX_VALUE : fechaActualizacion.until(LocalDateTime.now(), ChronoUnit.HOURS));
+      return fechaActualizacion == null ? Duration.ofHours(Integer.MAX_VALUE) : Duration.between(fechaActualizacion, LocalDateTime.now());
     }
   }
 

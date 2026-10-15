@@ -178,8 +178,8 @@ public class DataLoaderService implements ApplicationRunner, EnvironmentAware {
     log.info("El backup tiene una antiguedad de {} horas...", updateSpec.getAntiguedad()
         .toHours());
     if (updateSpec.getAntiguedad()
-        .compareTo(Duration.ofHours(antiguedadMaxima)) > 0) {
-      log.info("El backup tiene m\u00e1s de {} horas. Intentando actualizaci\u00f3n desde EPL", antiguedadMaxima);
+        .compareTo(Duration.ofHours(antiguedadMaxima)) >= 0) {
+      log.info("El backup tiene {} horas o m\u00e1s. Intentando actualizaci\u00f3n desde EPL", antiguedadMaxima);
       UpdateSpec tempUpdateSpec = eplCSVProcessor.updateFromEPL();
       if (tempUpdateSpec.isEmpty()) {
         log.info("La descarga no funcion\u00f3, usando backup");
