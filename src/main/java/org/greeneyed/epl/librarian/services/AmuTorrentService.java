@@ -112,6 +112,9 @@ public class AmuTorrentService {
       body.put("clientId", clientId);
       // aMuTorrent REST v1 documents this field as categoryName.
       body.put("categoryName", category);
+      // Older/current aMuTorrent handlers read the legacy field name instead.
+      // Sending both keeps the integration compatible across releases.
+      body.put("label", category);
       HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/downloads/magnets"))
           .timeout(Duration.ofSeconds(20))
           .header("X-API-Key", apiKey)
