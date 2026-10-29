@@ -627,7 +627,6 @@ export default {
         .join(' ');
       const url = 'https://www.cultura.gob.es/webISBN/tituloSimpleFilter.do'
         + '?cache=init&prev_layout=busquedaisbn&layout=busquedaisbn&language=es';
-      window.open(url, '_blank', 'noopener,noreferrer');
       const mostrarAvis = () => this.$buefy.notification.open({
         type: 'is-info',
         duration: 5000,
@@ -640,7 +639,9 @@ export default {
       textarea.style.position = 'fixed';
       textarea.style.opacity = '0';
       document.body.appendChild(textarea);
+      textarea.focus();
       textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
       let copiat = false;
       try {
         copiat = document.execCommand('copy');
@@ -656,8 +657,22 @@ export default {
           hasIcon: true
         });
       } else {
-        mostrarAvis();
+        const consultaManual = window.prompt(
+          'No s’ha pogut accedir automàticament al porta-retalls. Copia aquesta consulta:',
+          consulta
+        );
+        if (consultaManual !== null) {
+          this.$buefy.notification.open({
+            type: 'is-info',
+            duration: 5000,
+            message: 'Consulta preparada. Enganxa-la al camp “Texto de búsqueda”.',
+            hasIcon: true
+          });
+        } else {
+          mostrarAvis();
+        }
       }
+      window.open(url, '_blank', 'noopener,noreferrer');
     },
     obreIsbnManual(libro) {
       this.$set(this.isbnManualVisible, libro.id, true);
