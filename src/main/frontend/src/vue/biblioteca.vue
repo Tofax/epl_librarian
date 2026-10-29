@@ -249,6 +249,13 @@
               :loading="isbnLoading[props.row.id]"
               @click.stop="cercaIsbn(props.row)"
             >Cerca ISBN</b-button>
+            <b-button
+              size="is-small"
+              type="is-warning"
+              icon-pack="fa"
+              icon-left="external-link-alt"
+              @click.stop="cercaIsbnOficial(props.row)"
+            >Cerca oficial</b-button>
           </div>
           <b-field grouped class="isbn-manual-field">
             <b-input
@@ -591,6 +598,32 @@ export default {
         })
         .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'Error cercant l’ISBN.', hasIcon: true }))
         .finally(() => this.$set(this.isbnLoading, libro.id, false));
+    },
+    cercaIsbnOficial(libro) {
+      const consulta = [libro.titulo, libro.autor, libro.editorial]
+        .filter(valor => valor && valor.trim())
+        .join(' ');
+      const url = 'https://www.cultura.gob.es/webISBN/tituloSimpleFilter.do'
+        + '?cache=init&prev_layout=busquedaisbn&layout=busquedaisbn&language=es';
+      window.open(url, '_blank', 'noopener,noreferrer');
+      const mostrarAvis = () => this.$buefy.notification.open({
+        type: 'is-info',
+        duration: 5000,
+        message: `Cerca oficial oberta. Cerca amb: ${consulta}`,
+        hasIcon: true
+      });
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(consulta).then(() => {
+          this.$buefy.notification.open({
+            type: 'is-info',
+            duration: 5000,
+            message: `Cerca oficial oberta. Consulta copiada: ${consulta}`,
+            hasIcon: true
+          });
+        }).catch(mostrarAvis);
+      } else {
+        mostrarAvis();
+      }
     },
     desaIsbn(libro) {
       const formData = new FormData();
