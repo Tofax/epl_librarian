@@ -152,7 +152,7 @@ public class EplCSVProcessor implements EnvironmentAware {
 
     // Optional enrichment columns; the current EPL export does not provide them.
     @CsvBindByPosition(position = 17)
-    private String isbn;
+    private String hardcoverId;
 
     @CsvBindByPosition(position = 18)
     private String editorial;

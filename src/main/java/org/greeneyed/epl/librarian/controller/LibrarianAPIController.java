@@ -127,18 +127,18 @@ public class LibrarianAPIController {
     return ResponseEntity.ok(bibliotecaService.paginaLibros(busquedaLibro));
   }
 
-  @PostMapping(value = "/libro/{id}/isbn/buscar")
-  public ResponseEntity<Libro> buscarIsbn(@PathVariable int id) {
-    return bibliotecaService.searchIsbn(id)
+  @PostMapping(value = "/libro/{id}/hardcover/buscar")
+  public ResponseEntity<Libro> buscarHardcover(@PathVariable int id) {
+    return bibliotecaService.searchHardcover(id)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound()
             .build());
   }
 
-  @PostMapping(value = "/libro/{id}/isbn")
-  public ResponseEntity<Libro> guardarIsbn(@PathVariable int id,
-      @RequestParam String isbn) {
-    return bibliotecaService.setManualIsbn(id, isbn)
+  @PostMapping(value = "/libro/{id}/hardcover")
+  public ResponseEntity<Libro> guardarHardcover(@PathVariable int id,
+      @RequestParam String hardcoverId) {
+    return bibliotecaService.setManualHardcoverId(id, hardcoverId)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.badRequest()
             .build());

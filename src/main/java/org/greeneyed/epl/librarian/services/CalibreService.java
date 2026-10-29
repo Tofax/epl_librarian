@@ -74,7 +74,7 @@ public class CalibreService {
        	BOK.id,
       	LNG.lang_code,
         IDE.val epl_id,
-        ISBN.val isbn
+        HARDCOVER.val hardcover_id
        FROM books BOK
        INNER JOIN books_authors_link LNK
          ON LNK.book = BOK.id
@@ -86,8 +86,8 @@ public class CalibreService {
          ON LNG.id = LNGK.lang_code
        LEFT JOIN (SELECT * FROM identifiers WHERE type='epl') IDE
          ON IDE.book = BOK.ID
-       LEFT JOIN (SELECT book, max(val) val FROM identifiers WHERE type='isbn' GROUP BY book) ISBN
-         ON ISBN.book = BOK.ID
+       LEFT JOIN (SELECT book, max(val) val FROM identifiers WHERE type IN ('hardcover','hardcover_id') GROUP BY book) HARDCOVER
+         ON HARDCOVER.book = BOK.ID
        GROUP BY BOK.id
        ORDER BY BOK.id, LNK.id
       """;
@@ -103,7 +103,7 @@ public class CalibreService {
        	BOK.id,
       	LNG.lang_code,
         coalesce(IDE.val,CAST(IDG.value as integer) - 10000000) epl_id_2,
-        ISBN.val isbn
+        HARDCOVER.val hardcover_id
        FROM books BOK
        INNER JOIN books_authors_link LNK
          ON LNK.book = BOK.id
@@ -115,8 +115,8 @@ public class CalibreService {
          ON LNG.id = LNGK.lang_code
        LEFT JOIN (SELECT * FROM identifiers WHERE type='epl') IDE
          ON IDE.book = BOK.ID
-       LEFT JOIN (SELECT book, max(val) val FROM identifiers WHERE type='isbn' GROUP BY book) ISBN
-         ON ISBN.book = BOK.ID
+       LEFT JOIN (SELECT book, max(val) val FROM identifiers WHERE type IN ('hardcover','hardcover_id') GROUP BY book) HARDCOVER
+         ON HARDCOVER.book = BOK.ID
        LEFT JOIN custom_column_%s IDG
          ON IDG.book  = BOK.ID
        GROUP BY BOK.id
@@ -197,7 +197,7 @@ public class CalibreService {
             log.error("Lenguaje de Calibre no detectado, notifícalo y lo añadiremos a la lista: {}", languageCode);
           }
           String eplId = rs.getString(5);
-          String isbn = rs.getString(6);
+          String hardcoverId = rs.getString(6);
           if (eplId != null) {
             try {
               inCalibre.add(Integer.parseInt(eplId));
@@ -206,7 +206,7 @@ public class CalibreService {
                   titulo, autores, eplId);
             }
           } else {
-            List<Integer> ids = searchAndUpdateAction.apply(titulo, autores, calibreLanguage, isbn);
+            List<Integer> ids = searchAndUpdateAction.apply(titulo, autores, calibreLanguage, hardcoverId);
             if (ids != null) {
               inCalibre.addAll(ids);
               if (preferencesService.isUpdatingCalibre()) {

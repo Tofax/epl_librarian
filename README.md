@@ -110,9 +110,11 @@ El programa sincroniza automáticamente los datos de Calibre al arrancar, pero t
 
 Esta funcionalidad es útil cuando estamos añadiendo al Calibre libros que nos faltán y queremos actualizar los resultados del filtro "Ocultar los que tengo/descartados".
 
-### Enriquecimiento por ISBN y aMuTorrent
+### Integración con Hardcover y aMuTorrent
 
-La comparación con Calibre puede utilizar ISBN además del identificador EPL. Para activar la consulta de metadatos cuando el catálogo no contiene ISBN, añade `isbn_enrichment=true` en las propiedades de la aplicación. EPL Librarian consulta únicamente los libros en catalán (`ca`, `cat`, `català` o `catalan`). Se puede configurar `isbn_provider=googlebooks`, `isbn_provider=isbndb` o `isbn_provider=auto` (por defecto); las claves se configuran mediante `google_books_api_key` y `isbndb_api_key`. Los resultados se persisten en `isbn-cache.json` junto a `preferences.properties`, por lo que no se vuelve a consultar el mismo libro en cada arranque. Para evitar límites de los proveedores, cada ejecución procesa como a màxim `isbn_enrichment_max_per_run` llibres (50 per defecte), espera `isbn_enrichment_delay_ms` mil·lisegons entre peticions (1200 per defecte), pausa sis hores en rebre HTTP 429 i desa els casos sense resultat a `isbn-not-found.json` durant 30 dies.
+La comparación con Calibre utiliza el `hardcover_id`. Para activar la consulta automática añade `hardcover_enrichment=true` y configura `hardcover_api_token` con un token personal de Hardcover. Los resultados se persisten en `hardcover-cache.json` junto a `preferences.properties`, por lo que no se vuelve a consultar el mismo libro en cada arranque. Cada ejecución procesa como máximo `hardcover_enrichment_max_per_run` libros (50 por defecto), espera `hardcover_enrichment_delay_ms` milisegundos entre peticiones (1200 por defecto), pausa seis horas al recibir HTTP 429 y guarda los casos sin resultado en `hardcover-not-found.json` durante 30 días.
+
+Calibre debe guardar el identificador como `hardcover` en la tabla `identifiers`; EPL Librarian lo lee en modo solo lectura y lo compara directamente con el ID obtenido de Hardcover.
 
 La descarga automática de libros catalanes que falten es opcional y permanece desactivada por defecto. Para activarla hay que configurar `amutorrent_enabled=true`, `amutorrent_url`, `amutorrent_api_key`, `amutorrent_instance_id` y opcionalmente `amutorrent_category`. EPL Librarian enviará el primer magnet del libro a `/api/v1/downloads/magnets` de aMuTorrent únicamente cuando la integración con Calibre esté activa y el libro no consti a la biblioteca.
 

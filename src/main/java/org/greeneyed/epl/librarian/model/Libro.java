@@ -37,7 +37,7 @@ public class Libro {
   private static final String LIBRO_GENERO_PARAM = "libroGENERO";
   private static final String LIBRO_GENEROS_PARAM = "libroGENEROS";
   private static final String LIBRO_IDIOMA_PARAM = "libroIDIOMA";
-  private static final String LIBRO_ISBN_PARAM = "libroISBN";
+  private static final String LIBRO_HARDCOVER_ID_PARAM = "libroHardcoverId";
   private static final String LIBRO_VOLUMEN_PARAM = "libroVOLUMEN";
   private static final String LIBRO_PUBLICADO_PARAM = "libroPUBLICADO";
   private static final String LIBRO_EN_CALIBRE_PARAM = "libroEN_CALIBRE";
@@ -54,8 +54,8 @@ public class Libro {
       Libro::getListaAutoresNormalizados);
   public static final SimpleAttribute<Libro, String> LIBRO_IDIOMA = attribute(Libro.class, String.class, LIBRO_IDIOMA_PARAM,
       Libro::getIdiomaNormalizado);
-  public static final SimpleNullableAttribute<Libro, String> LIBRO_ISBN = nullableAttribute(Libro.class, String.class, LIBRO_ISBN_PARAM,
-      Libro::getIsbnNormalizado);
+  public static final SimpleNullableAttribute<Libro, String> LIBRO_HARDCOVER_ID = nullableAttribute(Libro.class, String.class,
+      LIBRO_HARDCOVER_ID_PARAM, Libro::getHardcoverIdNormalizado);
   public static final SimpleAttribute<Libro, Boolean> LIBRO_EN_CALIBRE = attribute(Libro.class, Boolean.class, LIBRO_EN_CALIBRE_PARAM,
       Libro::getInCalibre);
   public static final SimpleAttribute<Libro, Boolean> LIBRO_DESCARTADO = attribute(Libro.class, Boolean.class, LIBRO_DESCARTADO_PARAM,
@@ -96,7 +96,7 @@ public class Libro {
 
   private String editorial;
 
-  private String isbn;
+  private String hardcoverId;
 
   private String publicado;
 
@@ -199,14 +199,12 @@ public class Libro {
   }
 
   @JsonIgnore
-  public String getIsbnNormalizado() {
-    return isbnNormalizado(isbn);
+  public String getHardcoverIdNormalizado() {
+    return hardcoverIdNormalizado(hardcoverId);
   }
 
-  public static String isbnNormalizado(String value) {
-    return value == null ? null
-        : value.replaceAll("[^0-9Xx]", "")
-            .toUpperCase();
+  public static String hardcoverIdNormalizado(String value) {
+    return value == null || value.isBlank() ? null : value.trim();
   }
 
   @JsonIgnore

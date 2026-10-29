@@ -237,43 +237,40 @@
           ></b-icon>
         </template>
       </b-table-column>
-      <b-table-column field="POR_ISBN" label="ISBN" sortable width="11%">
+      <b-table-column field="POR_HARDCOVER" label="Hardcover" sortable width="13%">
         <template v-slot="props">
-          <div class="isbn-cell">
-            <div class="isbn-value" :class="{ 'isbn-value-missing': !props.row.isbn }">
+          <div class="hardcover-cell">
+            <div class="hardcover-value" :class="{ 'hardcover-value-missing': !props.row.hardcoverId }">
               <b-icon
                 pack="fa"
-                :type="props.row.isbn ? 'is-success' : 'is-light'"
-                :icon="props.row.isbn ? 'check-circle' : 'question-circle'"
+                :type="props.row.hardcoverId ? 'is-success' : 'is-light'"
+                :icon="props.row.hardcoverId ? 'check-circle' : 'question-circle'"
               />
-              <span>{{ props.row.isbn || 'Sense ISBN' }}</span>
+              <span>{{ props.row.hardcoverId || 'Sense ID' }}</span>
             </div>
-            <b-dropdown aria-role="list" position="is-bottom-left" class="isbn-actions">
+            <b-dropdown aria-role="list" position="is-bottom-left" class="hardcover-actions">
               <template #trigger>
                 <b-button
                   size="is-small"
                   type="is-light"
                   icon-pack="fa"
                   icon-left="search"
-                  :loading="isbnLoading[props.row.id]"
+                  :loading="hardcoverLoading[props.row.id]"
                 >Cerca</b-button>
               </template>
-              <b-dropdown-item aria-role="listitem" @click="cercaIsbn(props.row)">
-                <b-icon pack="fa" icon="magic" /> Cerca automàtica
+              <b-dropdown-item aria-role="listitem" @click="cercaHardcover(props.row)">
+                <b-icon pack="fa" icon="magic" /> Cerca a Hardcover
               </b-dropdown-item>
-              <b-dropdown-item aria-role="listitem" @click="cercaIsbnOficial(props.row)">
-                <b-icon pack="fa" icon="external-link-alt" /> Cerca oficial
-              </b-dropdown-item>
-              <b-dropdown-item aria-role="listitem" @click="obreIsbnManual(props.row)">
-                <b-icon pack="fa" icon="keyboard" /> Introduir manualment
+              <b-dropdown-item aria-role="listitem" @click="obreHardcoverManual(props.row)">
+                <b-icon pack="fa" icon="keyboard" /> Introduir ID manualment
               </b-dropdown-item>
             </b-dropdown>
           </div>
-          <b-field v-if="isbnManualVisible[props.row.id]" grouped addons class="isbn-manual-field">
+          <b-field v-if="hardcoverManualVisible[props.row.id]" grouped addons class="hardcover-manual-field">
             <b-input
-              v-model="isbnManual[props.row.id]"
+              v-model="hardcoverManual[props.row.id]"
               size="is-small"
-              placeholder="ISBN"
+              placeholder="Hardcover ID"
               @click.native.stop
             />
             <p class="control">
@@ -282,8 +279,8 @@
                 type="is-success"
                 icon-pack="fa"
                 icon-left="save"
-                :disabled="!isbnManual[props.row.id]"
-                @click.stop="desaIsbn(props.row)"
+                :disabled="!hardcoverManual[props.row.id]"
+                @click.stop="desaHardcover(props.row)"
               />
             </p>
             <p class="control">
@@ -292,7 +289,7 @@
                 type="is-light"
                 icon-pack="fa"
                 icon="times"
-                @click.stop="$set(isbnManualVisible, props.row.id, false)"
+                @click.stop="$set(hardcoverManualVisible, props.row.id, false)"
               />
             </p>
           </b-field>
@@ -428,9 +425,9 @@ export default {
       ocultarDescartados: false,
       fechaBase: null,
       timeAgo: new TimeAgo('ca'),
-      isbnLoading: {},
-      isbnManual: {},
-      isbnManualVisible: {},
+      hardcoverLoading: {},
+      hardcoverManual: {},
+      hardcoverManualVisible: {},
     };
   },
   computed: {
@@ -607,92 +604,39 @@ export default {
           throw error;
         });
     },
-    cercaIsbn(libro) {
-      this.$set(this.isbnLoading, libro.id, true);
-      axios.post(`/librarian/libro/${libro.id}/isbn/buscar`)
+    cercaHardcover(libro) {
+      this.$set(this.hardcoverLoading, libro.id, true);
+      axios.post(`/librarian/libro/${libro.id}/hardcover/buscar`)
         .then(({ data }) => {
-          if (data.isbn) {
-            this.$set(libro, 'isbn', data.isbn);
-            this.$buefy.notification.open({ type: 'is-success', duration: 3000, message: `ISBN trobat: ${data.isbn}`, hasIcon: true });
+          if (data.hardcoverId) {
+            this.$set(libro, 'hardcoverId', data.hardcoverId);
+            this.$buefy.notification.open({ type: 'is-success', duration: 3000, message: `Hardcover ID trobat: ${data.hardcoverId}`, hasIcon: true });
           } else {
-            this.$buefy.notification.open({ type: 'is-warning', duration: 3000, message: 'No s’ha trobat cap ISBN fiable.', hasIcon: true });
+            this.$buefy.notification.open({ type: 'is-warning', duration: 3000, message: 'No s’ha trobat cap Hardcover ID fiable.', hasIcon: true });
           }
         })
-        .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'Error cercant l’ISBN.', hasIcon: true }))
-        .finally(() => this.$set(this.isbnLoading, libro.id, false));
+        .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'Error cercant a Hardcover.', hasIcon: true }))
+        .finally(() => this.$set(this.hardcoverLoading, libro.id, false));
     },
-    cercaIsbnOficial(libro) {
-      const consulta = [libro.titulo, libro.autor, libro.editorial]
-        .filter(valor => valor && valor.trim())
-        .join(' ');
-      const url = 'https://www.cultura.gob.es/webISBN/tituloSimpleFilter.do'
-        + '?cache=init&prev_layout=busquedaisbn&layout=busquedaisbn&language=es';
-      const mostrarAvis = () => this.$buefy.notification.open({
-        type: 'is-info',
-        duration: 5000,
-        message: `Cerca oficial oberta. Copia aquesta consulta: ${consulta}`,
-        hasIcon: true
-      });
-      const textarea = document.createElement('textarea');
-      textarea.value = consulta;
-      textarea.setAttribute('readonly', '');
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      textarea.setSelectionRange(0, textarea.value.length);
-      let copiat = false;
-      try {
-        copiat = document.execCommand('copy');
-      } catch (error) {
-        copiat = false;
-      }
-      document.body.removeChild(textarea);
-      if (copiat) {
-        this.$buefy.notification.open({
-          type: 'is-success',
-          duration: 5000,
-          message: 'Cerca oficial oberta. La consulta s’ha copiat al porta-retalls.',
-          hasIcon: true
-        });
-      } else {
-        const consultaManual = window.prompt(
-          'No s’ha pogut accedir automàticament al porta-retalls. Copia aquesta consulta:',
-          consulta
-        );
-        if (consultaManual !== null) {
-          this.$buefy.notification.open({
-            type: 'is-info',
-            duration: 5000,
-            message: 'Consulta preparada. Enganxa-la al camp “Texto de búsqueda”.',
-            hasIcon: true
-          });
-        } else {
-          mostrarAvis();
-        }
-      }
-      window.open(url, '_blank', 'noopener,noreferrer');
-    },
-    obreIsbnManual(libro) {
-      this.$set(this.isbnManualVisible, libro.id, true);
+    obreHardcoverManual(libro) {
+      this.$set(this.hardcoverManualVisible, libro.id, true);
       this.$nextTick(() => {
-        const inputs = this.$el.querySelectorAll('.isbn-manual-field input');
+        const inputs = this.$el.querySelectorAll('.hardcover-manual-field input');
         const input = inputs[inputs.length - 1];
         if (input) input.focus();
       });
     },
-    desaIsbn(libro) {
+    desaHardcover(libro) {
       const formData = new FormData();
-      formData.append('isbn', this.isbnManual[libro.id]);
-      axios.post(`/librarian/libro/${libro.id}/isbn`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      formData.append('hardcoverId', this.hardcoverManual[libro.id]);
+      axios.post(`/librarian/libro/${libro.id}/hardcover`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
         .then(({ data }) => {
-          this.$set(libro, 'isbn', data.isbn);
-          this.$set(this.isbnManual, libro.id, '');
-          this.$set(this.isbnManualVisible, libro.id, false);
-          this.$buefy.notification.open({ type: 'is-success', duration: 3000, message: `ISBN desat: ${data.isbn}`, hasIcon: true });
+          this.$set(libro, 'hardcoverId', data.hardcoverId);
+          this.$set(this.hardcoverManual, libro.id, '');
+          this.$set(this.hardcoverManualVisible, libro.id, false);
+          this.$buefy.notification.open({ type: 'is-success', duration: 3000, message: `Hardcover ID desat: ${data.hardcoverId}`, hasIcon: true });
         })
-        .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'ISBN no vàlid o error en desar-lo.', hasIcon: true }));
+        .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'Hardcover ID no vàlid o error en desar-lo.', hasIcon: true }));
     },
     guardarFechaBase() {
       if (this.fechaBase) {
@@ -870,40 +814,40 @@ div.fechaBaseSelector {
   margin-right: 0;
 }
 
-.isbn-cell,
-.isbn-value,
-.isbn-manual-field {
+.hardcover-cell,
+.hardcover-value,
+.hardcover-manual-field {
   white-space: nowrap;
 }
 
-.isbn-cell {
+.hardcover-cell {
   display: flex;
   align-items: center;
   gap: 0.35em;
 }
 
-.isbn-value {
+.hardcover-value {
   display: flex;
   align-items: center;
   gap: 0.35em;
   font-weight: 600;
 }
 
-.isbn-value-missing {
+.hardcover-value-missing {
   color: #888;
   font-weight: 400;
 }
 
-.isbn-actions {
+.hardcover-actions {
   flex: 0 0 auto;
 }
 
-.isbn-manual-field {
+.hardcover-manual-field {
   margin-top: 0.4em;
   margin-bottom: 0;
 }
 
-.isbn-manual-field .control {
+.hardcover-manual-field .control {
   margin-left: 0;
 }
 
