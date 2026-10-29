@@ -237,10 +237,14 @@
           ></b-icon>
         </template>
       </b-table-column>
-      <b-table-column field="ISBN" label="ISBN" width="13%">
+      <b-table-column field="ISBN" label="ISBN" width="16%">
         <template v-slot="props">
-          <div v-if="props.row.isbn" class="isbn-value">{{ props.row.isbn }}</div>
-          <div v-else>
+          <div v-if="props.row.isbn" class="isbn-value">
+            <b-icon pack="fa" type="is-success" icon="check-circle" />
+            <span>{{ props.row.isbn }}</span>
+          </div>
+          <div v-else class="isbn-missing">
+            <span class="isbn-missing-label">Sense ISBN</span>
             <b-button
               size="is-small"
               type="is-info"
@@ -255,13 +259,13 @@
               icon-pack="fa"
               icon-left="external-link-alt"
               @click.stop="cercaIsbnOficial(props.row)"
-            >Cerca oficial</b-button>
+            >Oficial</b-button>
           </div>
-          <b-field grouped class="isbn-manual-field">
+          <b-field grouped addons class="isbn-manual-field">
             <b-input
               v-model="isbnManual[props.row.id]"
               size="is-small"
-              placeholder="ISBN manual"
+              placeholder="ISBN"
               @click.native.stop
             />
             <p class="control">
@@ -609,18 +613,30 @@ export default {
       const mostrarAvis = () => this.$buefy.notification.open({
         type: 'is-info',
         duration: 5000,
-        message: `Cerca oficial oberta. Cerca amb: ${consulta}`,
+        message: `Cerca oficial oberta. Copia aquesta consulta: ${consulta}`,
         hasIcon: true
       });
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(consulta).then(() => {
-          this.$buefy.notification.open({
-            type: 'is-info',
-            duration: 5000,
-            message: `Cerca oficial oberta. Consulta copiada: ${consulta}`,
-            hasIcon: true
-          });
-        }).catch(mostrarAvis);
+      const textarea = document.createElement('textarea');
+      textarea.value = consulta;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      let copiat = false;
+      try {
+        copiat = document.execCommand('copy');
+      } catch (error) {
+        copiat = false;
+      }
+      document.body.removeChild(textarea);
+      if (copiat) {
+        this.$buefy.notification.open({
+          type: 'is-success',
+          duration: 5000,
+          message: 'Cerca oficial oberta. La consulta s’ha copiat al porta-retalls.',
+          hasIcon: true
+        });
       } else {
         mostrarAvis();
       }
@@ -810,6 +826,41 @@ div.fechaBaseSelector {
 
 .onlyFilter .switch{
   margin-right: 0;
+}
+
+.isbn-value,
+.isbn-missing,
+.isbn-manual-field {
+  white-space: nowrap;
+}
+
+.isbn-value {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  font-weight: 600;
+}
+
+.isbn-missing {
+  display: flex;
+  align-items: center;
+  gap: 0.25em;
+  margin-bottom: 0.35em;
+}
+
+.isbn-missing-label {
+  color: #888;
+  font-size: 0.85em;
+  margin-right: 0.15em;
+}
+
+.isbn-manual-field {
+  margin-top: 0.25em;
+  margin-bottom: 0;
+}
+
+.isbn-manual-field .control {
+  margin-left: 0;
 }
 
 #numero_por_pagina {
