@@ -237,31 +237,40 @@
           ></b-icon>
         </template>
       </b-table-column>
-      <b-table-column field="ISBN" label="ISBN" width="16%">
+      <b-table-column field="POR_ISBN" label="ISBN" sortable width="11%">
         <template v-slot="props">
-          <div v-if="props.row.isbn" class="isbn-value">
-            <b-icon pack="fa" type="is-success" icon="check-circle" />
-            <span>{{ props.row.isbn }}</span>
+          <div class="isbn-cell">
+            <div class="isbn-value" :class="{ 'isbn-value-missing': !props.row.isbn }">
+              <b-icon
+                pack="fa"
+                :type="props.row.isbn ? 'is-success' : 'is-light'"
+                :icon="props.row.isbn ? 'check-circle' : 'question-circle'"
+              />
+              <span>{{ props.row.isbn || 'Sense ISBN' }}</span>
+            </div>
+            <b-dropdown aria-role="list" position="is-bottom-left" class="isbn-actions">
+              <template #trigger>
+                <b-button
+                  size="is-small"
+                  type="is-light"
+                  icon-pack="fa"
+                  icon-left="search"
+                  :loading="isbnLoading[props.row.id]"
+                  @click.native.stop
+                >Cerca</b-button>
+              </template>
+              <b-dropdown-item aria-role="listitem" @click="cercaIsbn(props.row)">
+                <b-icon pack="fa" icon="magic" /> Cerca automàtica
+              </b-dropdown-item>
+              <b-dropdown-item aria-role="listitem" @click="cercaIsbnOficial(props.row)">
+                <b-icon pack="fa" icon="external-link-alt" /> Cerca oficial
+              </b-dropdown-item>
+              <b-dropdown-item aria-role="listitem" @click="obreIsbnManual(props.row)">
+                <b-icon pack="fa" icon="keyboard" /> Introduir manualment
+              </b-dropdown-item>
+            </b-dropdown>
           </div>
-          <div v-else class="isbn-missing">
-            <span class="isbn-missing-label">Sense ISBN</span>
-            <b-button
-              size="is-small"
-              type="is-info"
-              icon-pack="fa"
-              icon-left="search"
-              :loading="isbnLoading[props.row.id]"
-              @click.stop="cercaIsbn(props.row)"
-            >Cerca ISBN</b-button>
-            <b-button
-              size="is-small"
-              type="is-warning"
-              icon-pack="fa"
-              icon-left="external-link-alt"
-              @click.stop="cercaIsbnOficial(props.row)"
-            >Oficial</b-button>
-          </div>
-          <b-field grouped addons class="isbn-manual-field">
+          <b-field v-if="isbnManualVisible[props.row.id]" grouped addons class="isbn-manual-field">
             <b-input
               v-model="isbnManual[props.row.id]"
               size="is-small"
@@ -276,6 +285,15 @@
                 icon-left="save"
                 :disabled="!isbnManual[props.row.id]"
                 @click.stop="desaIsbn(props.row)"
+              />
+            </p>
+            <p class="control">
+              <b-button
+                size="is-small"
+                type="is-light"
+                icon-pack="fa"
+                icon="times"
+                @click.stop="$set(isbnManualVisible, props.row.id, false)"
               />
             </p>
           </b-field>
@@ -413,6 +431,7 @@ export default {
       timeAgo: new TimeAgo('ca'),
       isbnLoading: {},
       isbnManual: {},
+      isbnManualVisible: {},
     };
   },
   computed: {
@@ -641,6 +660,14 @@ export default {
         mostrarAvis();
       }
     },
+    obreIsbnManual(libro) {
+      this.$set(this.isbnManualVisible, libro.id, true);
+      this.$nextTick(() => {
+        const inputs = this.$el.querySelectorAll('.isbn-manual-field input');
+        const input = inputs[inputs.length - 1];
+        if (input) input.focus();
+      });
+    },
     desaIsbn(libro) {
       const formData = new FormData();
       formData.append('isbn', this.isbnManual[libro.id]);
@@ -648,6 +675,7 @@ export default {
         .then(({ data }) => {
           this.$set(libro, 'isbn', data.isbn);
           this.$set(this.isbnManual, libro.id, '');
+          this.$set(this.isbnManualVisible, libro.id, false);
           this.$buefy.notification.open({ type: 'is-success', duration: 3000, message: `ISBN desat: ${data.isbn}`, hasIcon: true });
         })
         .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'ISBN no vàlid o error en desar-lo.', hasIcon: true }));
@@ -828,10 +856,16 @@ div.fechaBaseSelector {
   margin-right: 0;
 }
 
+.isbn-cell,
 .isbn-value,
-.isbn-missing,
 .isbn-manual-field {
   white-space: nowrap;
+}
+
+.isbn-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
 }
 
 .isbn-value {
@@ -841,21 +875,17 @@ div.fechaBaseSelector {
   font-weight: 600;
 }
 
-.isbn-missing {
-  display: flex;
-  align-items: center;
-  gap: 0.25em;
-  margin-bottom: 0.35em;
+.isbn-value-missing {
+  color: #888;
+  font-weight: 400;
 }
 
-.isbn-missing-label {
-  color: #888;
-  font-size: 0.85em;
-  margin-right: 0.15em;
+.isbn-actions {
+  flex: 0 0 auto;
 }
 
 .isbn-manual-field {
-  margin-top: 0.25em;
+  margin-top: 0.4em;
   margin-bottom: 0;
 }
 

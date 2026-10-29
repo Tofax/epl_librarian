@@ -118,6 +118,9 @@ public class BibliotecaService {
     , POR_CALIBRE(queryOptions(orderBy(ascending(Libro.LIBRO_EN_CALIBRE), ascending(Libro.LIBRO_TITULO))),
         queryOptions(orderBy(descending(Libro.LIBRO_EN_CALIBRE), descending(Libro.LIBRO_TITULO))))
     //
+    , POR_ISBN(queryOptions(orderBy(ascending(Libro.LIBRO_ISBN), ascending(Libro.LIBRO_TITULO))),
+        queryOptions(orderBy(descending(Libro.LIBRO_ISBN), descending(Libro.LIBRO_TITULO))))
+    //
     , POR_DESCARTE(queryOptions(orderBy(ascending(Libro.LIBRO_DESCARTADO), ascending(Libro.LIBRO_TITULO))),
         queryOptions(orderBy(descending(Libro.LIBRO_DESCARTADO), descending(Libro.LIBRO_TITULO))))
     //
