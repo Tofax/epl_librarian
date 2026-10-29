@@ -41,19 +41,35 @@ public class AmuTorrentService {
 
   public void submitMissingCatalanBooks(Iterable<Libro> books) {
     if (!enabled || apiKey.isBlank() || instanceId.isBlank()) {
+      log.warn("aMuTorrent no està actiu o falta configuració (enabled={}, apiKey={}, instanceId={})", enabled, !apiKey.isBlank(),
+          !instanceId.isBlank());
       return;
     }
+    int missingCatalan = 0;
+    int withMagnet = 0;
+    int withoutMagnet = 0;
     for (Libro book : books) {
       if (book.getInCalibre() || !isCatalan(book.getIdioma())) {
         continue;
       }
+      missingCatalan++;
+      boolean foundMagnet = false;
       for (String magnet : book.getListaMagnetIds()) {
-        if (magnet.startsWith("magnet:") && submittedMagnets.add(magnet)) {
-          submit(magnet, book);
+        if (magnet.startsWith("magnet:")) {
+          foundMagnet = true;
+          if (submittedMagnets.add(magnet)) {
+            withMagnet++;
+            submit(magnet, book);
+          }
           break;
         }
       }
+      if (!foundMagnet) {
+        withoutMagnet++;
+      }
     }
+    log.info("aMuTorrent: {} llibres catalans absents de Calibre; {} amb magnet enviable i {} sense magnet", missingCatalan, withMagnet,
+        withoutMagnet);
   }
 
   private boolean isCatalan(String language) {
