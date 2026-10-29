@@ -106,7 +106,9 @@ public class AmuTorrentService {
       HashMap<String, Object> body = new HashMap<>();
       body.put("links", java.util.List.of(magnet));
       body.put("instanceId", instanceId);
-      body.put("categoryName", category);
+      // aMuTorrent REST v1 calls this field "label" (categoryName is used by
+      // other API/WebSocket payloads and is ignored by the REST bridge).
+      body.put("label", category);
       HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/downloads/magnets"))
           .timeout(Duration.ofSeconds(20))
           .header("X-API-Key", apiKey)
