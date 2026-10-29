@@ -1,9 +1,11 @@
 package org.greeneyed.epl.librarian.services;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Set;
@@ -54,8 +56,9 @@ public class AmuTorrentService {
       }
       missingCatalan++;
       boolean foundMagnet = false;
-      for (String magnet : book.getListaMagnetIds()) {
-        if (magnet.startsWith("magnet:")) {
+      for (String magnetId : book.getListaMagnetIds()) {
+        String magnet = toMagnet(magnetId, book);
+        if (magnet != null) {
           foundMagnet = true;
           if (submittedMagnets.add(magnet)) {
             withMagnet++;
@@ -70,6 +73,22 @@ public class AmuTorrentService {
     }
     log.info("aMuTorrent: {} llibres catalans absents de Calibre; {} amb magnet enviable i {} sense magnet", missingCatalan, withMagnet,
         withoutMagnet);
+  }
+
+  private String toMagnet(String magnetId,
+      Libro book) {
+    if (magnetId == null || magnetId.isBlank()) {
+      return null;
+    }
+    String value = magnetId.trim();
+    if (value.startsWith("magnet:")) {
+      return value;
+    }
+    String encodedTitle = URLEncoder.encode(book.getTitulo(), StandardCharsets.UTF_8)
+        .replace("+", "%20");
+    return "magnet:?xt=urn:btih:" + value + "&dn=EPL_" + book.getId() + "_" + encodedTitle + "&tr=http://tracker.tfile.me/announce"
+        + "&tr=udp://tracker.opentrackr.org:1337/announce" + "&tr=udp://tracker.openbittorrent.com:80" + "&tr=udp://tracker.publicbt.com:80"
+        + "&tr=udp://open.demonii.com:1337/announce";
   }
 
   private boolean isCatalan(String language) {
