@@ -110,19 +110,19 @@ public class AmuTorrentService {
       body.put("instanceId", instanceId);
       // Required by aMuTorrent when selecting the configured download client.
       body.put("clientId", clientId);
-      // aMuTorrent REST v1 calls this field "label" (categoryName is used by
-      // other API/WebSocket payloads and is ignored by the REST bridge).
-      body.put("label", category);
+      // aMuTorrent REST v1 documents this field as categoryName.
+      body.put("categoryName", category);
       HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/downloads/magnets"))
           .timeout(Duration.ofSeconds(20))
           .header("X-API-Key", apiKey)
           .header("Content-Type", "application/json")
+          .header("Accept", "application/json")
           .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
           .build();
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() / 100 != 2) {
         submittedMagnets.remove(magnet);
-        log.warn("aMuTorrent ha rebutjat '{}' (HTTP {})", book.getTitulo(), response.statusCode());
+        log.warn("aMuTorrent ha rebutjat '{}' (HTTP {}): {}", book.getTitulo(), response.statusCode(), response.body());
       } else {
         log.info("Llibre '{}' enviat a aMuTorrent", book.getTitulo());
       }

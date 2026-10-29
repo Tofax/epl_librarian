@@ -511,6 +511,18 @@ public class BibliotecaService {
           candidatos = queryBaseResult.stream()
               .toList();
         }
+
+        // Calibre pot tenir l'idioma buit o usar un codi que no tenim
+        // mapejat. Si el títol base no apareix amb el filtre d'idioma,
+        // repetim la consulta sense idioma; l'autor i la unicitat continuen
+        // protegint contra falses coincidències.
+        if (candidatos.isEmpty() && calibreLanguage != null) {
+          Query<Libro> queryBaseSinIdioma = equal(Libro.LIBRO_TITULO_BASE_COMPARABLE, Libro.tituloComparableSinVolumen(titulo));
+          try (ResultSet<Libro> queryBaseResult = libreria.retrieve(queryBaseSinIdioma)) {
+            candidatos = queryBaseResult.stream()
+                .toList();
+          }
+        }
       }
 
       // Preferimos la coincidencia completa de autores, pero no descartamos
