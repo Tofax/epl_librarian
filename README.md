@@ -110,6 +110,12 @@ El programa sincroniza automáticamente los datos de Calibre al arrancar, pero t
 
 Esta funcionalidad es útil cuando estamos añadiendo al Calibre libros que nos faltán y queremos actualizar los resultados del filtro "Ocultar los que tengo/descartados".
 
+### Enriquecimiento por ISBN y aMuTorrent
+
+La comparación con Calibre puede utilizar ISBN además del identificador EPL. Para activar la consulta de metadatos cuando el catálogo no contiene ISBN, añade `isbn_enrichment=true` en las propiedades de la aplicación. EPL Librarian consulta Open Library y, como segunda fuente, Google Books; solo guarda un ISBN cuando la coincidencia de título, autor e idioma supera la confianza configurada (`isbn_min_confidence`, por defecto `0.80`). Los resultados se persisten en `isbn-cache.json` junto a `preferences.properties`, por lo que no se vuelve a consultar el mismo libro en cada arranque.
+
+La descarga automática de libros catalanes que falten es opcional y permanece desactivada por defecto. Para activarla hay que configurar `amutorrent_enabled=true`, `amutorrent_url`, `amutorrent_api_key`, `amutorrent_instance_id` y opcionalmente `amutorrent_category`. EPL Librarian enviará el primer magnet del libro a `/api/v1/downloads/magnets` de aMuTorrent únicamente cuando la integración con Calibre esté activa y el libro no consti a la biblioteca.
+
 ## Funcionamiento
 El programa ofrece varios listados
 

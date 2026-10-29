@@ -143,6 +143,8 @@ public class BibliotecaService {
   private final PreferencesService preferencesService;
   private final CalibreService calibreService;
   private final VersionService versionService;
+  private final IsbnMetadataService isbnMetadataService;
+  private final AmuTorrentService amuTorrentService;
 
   @Getter
   private final IndexedCollection<Libro> libreria = new ConcurrentIndexedCollection<>();
@@ -166,6 +168,7 @@ public class BibliotecaService {
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_TITULO_COMPARABLE));
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_AUTOR));
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_IDIOMA));
+    libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_ISBN));
     libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_PUBLICADO));
     libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_AUTORES));
     libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_GENEROS));
@@ -207,9 +210,15 @@ public class BibliotecaService {
           .stream()
           .map(mapperService::from)
           .collect(Collectors.toList());
+      if (isbnMetadataService.isEnabled()) {
+        libros.forEach(isbnMetadataService::enrich);
+      }
       libreria.addAll(libros);
       log.info("Libros a\u00f1adidos.");
       updateCalibre(false);
+      if (calibreService.isEnabled()) {
+        amuTorrentService.submitMissingCatalanBooks(libreria);
+      }
       log.info("Recopilando autores...");
       autores.clear();
       Map<String, Integer> autoresLibros = new HashMap<>();
@@ -475,16 +484,18 @@ public class BibliotecaService {
     log.info("...actualizados");
   }
 
-  private TriFunction<String, String, CalibreService.CALIBRE_LANGUAGE, List<Integer>> SEARCH_AND_UDPATE_BOOK = (titulo,
+  private CalibreService.QuadFunction<String, String, CalibreService.CALIBRE_LANGUAGE, String, List<Integer>> SEARCH_AND_UDPATE_BOOK = (titulo,
       autores,
-      calibreLanguage) -> {
+      calibreLanguage,
+      isbn) -> {
     List<Libro> aModificar = new ArrayList<>();
     List<Integer> ids = null;
     Set<String> autoresSet = Arrays.asList(autores.split(" & "))
         .stream()
         .map(Autor::getNombreComparable)
         .collect(Collectors.toSet());
-    Query<Libro> query = equal(Libro.LIBRO_TITULO_COMPARABLE, Libro.tituloComparable(titulo));
+    Query<Libro> query = isbn != null && !isbn.isBlank() ? equal(Libro.LIBRO_ISBN, Libro.isbnNormalizado(isbn))
+        : equal(Libro.LIBRO_TITULO_COMPARABLE, Libro.tituloComparable(titulo));
     if (calibreLanguage != null) {
       query = and(query, equal(Libro.LIBRO_IDIOMA, calibreLanguage.getEplLabel()));
     }

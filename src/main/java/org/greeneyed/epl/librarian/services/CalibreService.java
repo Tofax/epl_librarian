@@ -56,6 +56,14 @@ public class CalibreService {
     }
   }
 
+  @FunctionalInterface
+  public static interface QuadFunction<T, U, V, W, R> {
+    R apply(T t,
+        U u,
+        V v,
+        W w);
+  }
+
   private final PreferencesService preferencesService;
   private Optional<File> calibreMetadata = null;
   private String url;
@@ -65,7 +73,8 @@ public class CalibreService {
        	BOK.title,
        	BOK.id,
       	LNG.lang_code,
-      	IDE.val epl_id
+        IDE.val epl_id,
+        ISBN.val isbn
        FROM books BOK
        INNER JOIN books_authors_link LNK
          ON LNK.book = BOK.id
@@ -77,6 +86,8 @@ public class CalibreService {
          ON LNG.id = LNGK.lang_code
        LEFT JOIN (SELECT * FROM identifiers WHERE type='epl') IDE
          ON IDE.book = BOK.ID
+       LEFT JOIN (SELECT book, max(val) val FROM identifiers WHERE type='isbn' GROUP BY book) ISBN
+         ON ISBN.book = BOK.ID
        GROUP BY BOK.id
        ORDER BY BOK.id, LNK.id
       """;
@@ -91,7 +102,8 @@ public class CalibreService {
        	BOK.title,
        	BOK.id,
       	LNG.lang_code,
-      	coalesce(IDE.val,CAST(IDG.value as integer) - 10000000) epl_id_2
+        coalesce(IDE.val,CAST(IDG.value as integer) - 10000000) epl_id_2,
+        ISBN.val isbn
        FROM books BOK
        INNER JOIN books_authors_link LNK
          ON LNK.book = BOK.id
@@ -103,6 +115,8 @@ public class CalibreService {
          ON LNG.id = LNGK.lang_code
        LEFT JOIN (SELECT * FROM identifiers WHERE type='epl') IDE
          ON IDE.book = BOK.ID
+       LEFT JOIN (SELECT book, max(val) val FROM identifiers WHERE type='isbn' GROUP BY book) ISBN
+         ON ISBN.book = BOK.ID
        LEFT JOIN custom_column_%s IDG
          ON IDG.book  = BOK.ID
        GROUP BY BOK.id
@@ -149,7 +163,7 @@ public class CalibreService {
     return sqLiteConfig;
   }
 
-  public Set<Integer> updateLibros(TriFunction<String, String, CALIBRE_LANGUAGE, List<Integer>> searchAndUpdateAction) {
+  public Set<Integer> updateLibros(QuadFunction<String, String, CALIBRE_LANGUAGE, String, List<Integer>> searchAndUpdateAction) {
     Set<Integer> inCalibre = new HashSet<>();
     if (enabled) {
       String todosLosLibrosStmnt = TODOS_LOS_LIBROS_STMNT;
@@ -183,6 +197,7 @@ public class CalibreService {
             log.error("Lenguaje de Calibre no detectado, notifícalo y lo añadiremos a la lista: {}", languageCode);
           }
           String eplId = rs.getString(5);
+          String isbn = rs.getString(6);
           if (eplId != null) {
             try {
               inCalibre.add(Integer.parseInt(eplId));
@@ -191,7 +206,7 @@ public class CalibreService {
                   titulo, autores, eplId);
             }
           } else {
-            List<Integer> ids = searchAndUpdateAction.apply(titulo, autores, calibreLanguage);
+            List<Integer> ids = searchAndUpdateAction.apply(titulo, autores, calibreLanguage, isbn);
             if (ids != null) {
               inCalibre.addAll(ids);
               if (preferencesService.isUpdatingCalibre()) {
