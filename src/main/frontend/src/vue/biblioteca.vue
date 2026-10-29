@@ -246,7 +246,15 @@
                 :type="props.row.hardcoverId ? 'is-success' : 'is-light'"
                 :icon="props.row.hardcoverId ? 'check-circle' : 'question-circle'"
               />
-              <span>{{ props.row.hardcoverId || 'Sense ID' }}</span>
+              <a
+                v-if="props.row.hardcoverId"
+                :href="hardcoverUrl(props.row)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="hardcover-link"
+                @click.stop
+              >{{ props.row.hardcoverId }}</a>
+              <span v-else>Sense ID</span>
             </div>
             <b-dropdown aria-role="list" position="is-bottom-left" class="hardcover-actions">
               <template #trigger>
@@ -256,9 +264,9 @@
                   icon-pack="fa"
                   icon-left="search"
                   :loading="hardcoverLoading[props.row.id]"
-                >Cerca</b-button>
+                >{{ props.row.hardcoverId ? 'Modificar' : 'Cerca' }}</b-button>
               </template>
-              <b-dropdown-item aria-role="listitem" @click="cercaHardcover(props.row)">
+              <b-dropdown-item v-if="!props.row.hardcoverId" aria-role="listitem" @click="cercaHardcover(props.row)">
                 <b-icon pack="fa" icon="magic" /> Cerca a Hardcover
               </b-dropdown-item>
               <b-dropdown-item aria-role="listitem" @click="obreHardcoverManual(props.row)">
@@ -618,6 +626,9 @@ export default {
         .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'Error cercant a Hardcover.', hasIcon: true }))
         .finally(() => this.$set(this.hardcoverLoading, libro.id, false));
     },
+    hardcoverUrl(libro) {
+      return `https://hardcover.app/books/${encodeURIComponent(libro.hardcoverId)}`;
+    },
     obreHardcoverManual(libro) {
       this.$set(this.hardcoverManualVisible, libro.id, true);
       this.$nextTick(() => {
@@ -836,6 +847,12 @@ div.fechaBaseSelector {
 .hardcover-value-missing {
   color: #888;
   font-weight: 400;
+}
+
+.hardcover-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
 }
 
 .hardcover-actions {
