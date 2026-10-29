@@ -76,8 +76,8 @@ public class HardcoverMetadataService {
   void loadCache() {
     cacheFile = PreferencesService.findPreferencesFile(superPortable, environment)
         .toPath()
-        .resolveSibling("hardcover-cache.json");
-    notFoundCacheFile = cacheFile.resolveSibling("hardcover-not-found.json");
+        .resolveSibling("hardcover-cache-v2.json");
+    notFoundCacheFile = cacheFile.resolveSibling("hardcover-not-found-v2.json");
     read(cacheFile, new TypeReference<Map<String, Result>>() {
     }, cache);
     read(notFoundCacheFile, new TypeReference<Map<String, Long>>() {
