@@ -496,16 +496,28 @@ public class BibliotecaService {
       query = and(query, equal(Libro.LIBRO_IDIOMA, calibreLanguage.getEplLabel()));
     }
     try (ResultSet<Libro> queryResult = libreria.retrieve(query)) {
-      queryResult.stream()
-          .forEach(libro -> {
+      List<Libro> candidatos = queryResult.stream()
+          .toList();
+
+      // Preferimos la coincidencia completa de autores, pero no descartamos
+      // un libro inequívoco cuando Calibre y EPL escriben los autores de forma
+      // distinta (por ejemplo, separadores, orden o autores incompletos).
+      candidatos.stream()
+          .filter(libro -> {
             Set<String> autoresSetLibro = libro.getListaAutores()
                 .stream()
                 .map(Autor::getNombreComparable)
                 .collect(Collectors.toSet());
-            if (autoresSetLibro.containsAll(autoresSet) && autoresSet.containsAll(autoresSetLibro)) {
-              aModificar.add(libro);
-            }
-          });
+            return autoresSetLibro.containsAll(autoresSet) && autoresSet.containsAll(autoresSetLibro);
+          })
+          .forEach(aModificar::add);
+
+      if (aModificar.isEmpty() && candidatos.size() == 1) {
+        Libro candidato = candidatos.get(0);
+        log.debug("Coincidencia Calibre por título e idioma (autor con formato diferente): EPL '{}' / Calibre '{}' (id {})", titulo,
+            candidato.getTitulo(), candidato.getId());
+        aModificar.add(candidato);
+      }
     }
     if (aModificar.size() == 1) {
       ids = aModificar.stream()

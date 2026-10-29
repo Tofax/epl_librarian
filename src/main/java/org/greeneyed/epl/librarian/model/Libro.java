@@ -209,7 +209,11 @@ public class Libro {
 
   public static String tituloComparable(String unNombre) {
     final String flattened = Libro.flattenToAscii(unNombre);
-    return flattened.replaceAll("[\\.\\(\\)\\-\\s]", "");
+    // Ignore punctuation and spacing when comparing titles coming from EPL
+    // and Calibre. The previous implementation did not remove commas, colons,
+    // quotes or other punctuation, so small formatting differences prevented
+    // an otherwise valid Calibre match (for example: "...mallorquines, Tom II").
+    return flattened.replaceAll("[^a-z0-9]", "");
   }
 
   public static String flattenToAscii(String string) {
