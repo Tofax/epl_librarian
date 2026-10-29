@@ -256,7 +256,6 @@
                   icon-pack="fa"
                   icon-left="search"
                   :loading="isbnLoading[props.row.id]"
-                  @click.native.stop
                 >Cerca</b-button>
               </template>
               <b-dropdown-item aria-role="listitem" @click="cercaIsbn(props.row)">
