@@ -107,6 +107,9 @@ public class IsbnMetadataService {
     if (!enabled || libro == null || libro.getIsbnNormalizado() != null || libro.getTitulo() == null) {
       return;
     }
+    if (!isCatalan(libro.getIdioma()) || rateLimitedUntil > System.currentTimeMillis()) {
+      return;
+    }
     String key = Libro.tituloComparable(libro.getTitulo()) + "|" + Libro.flattenToAscii(libro.getAutor()) + "|" + libro.getAnyoPublicacion();
     Long notFoundAt = notFoundCache.get(key);
     if (notFoundAt != null && notFoundAt > System.currentTimeMillis() - Duration.ofDays(notFoundTtlDays)
@@ -132,6 +135,11 @@ public class IsbnMetadataService {
       libro.setIsbn(result.isbn());
       log.debug("ISBN {} asignado a '{}' con confianza {} mediante {}", result.isbn(), libro.getTitulo(), result.confidence(), result.provider());
     }
+  }
+
+  private boolean isCatalan(String language) {
+    String normalized = Libro.flattenToAscii(language);
+    return "ca".equals(normalized) || "cat".equals(normalized) || "catala".equals(normalized) || "catalan".equals(normalized);
   }
 
   private synchronized void saveNotFoundCache() {
