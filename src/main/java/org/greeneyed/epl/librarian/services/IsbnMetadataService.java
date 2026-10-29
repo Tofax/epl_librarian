@@ -146,6 +146,42 @@ public class IsbnMetadataService {
     }
   }
 
+  public boolean searchNow(Libro libro) {
+    if (libro == null || libro.getTitulo() == null || !isCatalan(libro.getIdioma()) || rateLimitedUntil > System.currentTimeMillis()) {
+      return false;
+    }
+    String key = cacheKey(libro);
+    Result result = cache.get(key);
+    if (result == null) {
+      result = lookup(libro);
+      if (result != null) {
+        cache.put(key, result);
+        saveCache();
+      }
+    }
+    if (result != null && result.confidence() >= minimumConfidence) {
+      libro.setIsbn(result.isbn());
+      return true;
+    }
+    return false;
+  }
+
+  public boolean setManualIsbn(Libro libro,
+      String isbn) {
+    String normalized = Libro.isbnNormalizado(isbn);
+    if (libro == null || normalized == null || (normalized.length() != 10 && normalized.length() != 13)) {
+      return false;
+    }
+    libro.setIsbn(normalized);
+    cache.put(cacheKey(libro), new Result(normalized, 1.0, "manual"));
+    saveCache();
+    return true;
+  }
+
+  private String cacheKey(Libro libro) {
+    return Libro.tituloComparable(libro.getTitulo()) + "|" + Libro.flattenToAscii(libro.getAutor()) + "|" + libro.getAnyoPublicacion();
+  }
+
   private boolean isCatalan(String language) {
     String normalized = Libro.flattenToAscii(language);
     return "ca".equals(normalized) || "cat".equals(normalized) || "catala".equals(normalized) || "catalan".equals(normalized);
