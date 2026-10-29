@@ -31,6 +31,7 @@ public class Libro {
   private static final String LIBRO_ID_PARAM = "libroID";
   private static final String LIBRO_TITULO_PARAM = "libroTITULO";
   private static final String LIBRO_TITULO_COMPARABLE_PARAM = "libroTITULOCOMPARABLE";
+  private static final String LIBRO_TITULO_BASE_COMPARABLE_PARAM = "libroTITULOBASECOMPARABLE";
   private static final String LIBRO_AUTOR_PARAM = "libroAUTOR";
   private static final String LIBRO_AUTORES_PARAM = "libroAUTORES";
   private static final String LIBRO_COLECCION_PARAM = "libroCOLECCION";
@@ -47,6 +48,8 @@ public class Libro {
       Libro::getTituloNormalizado);
   public static final SimpleAttribute<Libro, String> LIBRO_TITULO_COMPARABLE = attribute(Libro.class, String.class, LIBRO_TITULO_COMPARABLE_PARAM,
       Libro::getTituloComparable);
+  public static final SimpleAttribute<Libro, String> LIBRO_TITULO_BASE_COMPARABLE = attribute(Libro.class, String.class,
+      LIBRO_TITULO_BASE_COMPARABLE_PARAM, Libro::getTituloComparableSinVolumen);
   public static final SimpleAttribute<Libro, String> LIBRO_AUTOR = attribute(Libro.class, String.class, LIBRO_AUTOR_PARAM,
       Libro::getAutorNormalizado);
   public static final MultiValueAttribute<Libro, String> LIBRO_AUTORES = attribute(Libro.class, String.class, LIBRO_AUTORES_PARAM,
@@ -184,6 +187,11 @@ public class Libro {
   }
 
   @JsonIgnore
+  public String getTituloComparableSinVolumen() {
+    return tituloComparableSinVolumen(titulo);
+  }
+
+  @JsonIgnore
   public String getAutorNormalizado() {
     return flattenToAscii(autor);
   }
@@ -214,6 +222,15 @@ public class Libro {
     // quotes or other punctuation, so small formatting differences prevented
     // an otherwise valid Calibre match (for example: "...mallorquines, Tom II").
     return flattened.replaceAll("[^a-z0-9]", "");
+  }
+
+  /**
+   * Comparable title without a trailing volume/part marker. This lets EPL match a
+   * short title with a Calibre title such as "... Tom I" while still requiring
+   * the remaining title and language to be unambiguous.
+   */
+  public static String tituloComparableSinVolumen(String unNombre) {
+    return tituloComparable(unNombre).replaceAll("(?:tom|tomo|volum|vol|volume|part|parte)(?:[ivxlcdm]+|[0-9]+)$", "");
   }
 
   public static String flattenToAscii(String string) {

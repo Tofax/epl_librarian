@@ -167,6 +167,7 @@ public class BibliotecaService {
     libreria.addIndex(UniqueIndex.onAttribute(Libro.LIBRO_ID));
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_TITULO));
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_TITULO_COMPARABLE));
+    libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_TITULO_BASE_COMPARABLE));
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_AUTOR));
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_IDIOMA));
     libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_PUBLICADO));
@@ -498,6 +499,19 @@ public class BibliotecaService {
     try (ResultSet<Libro> queryResult = libreria.retrieve(query)) {
       List<Libro> candidatos = queryResult.stream()
           .toList();
+
+      // EPL pot publicar el volum al títol i Calibre tenir-lo com a sufix
+      // (o al revés), per exemple "Aplec ..." / "Aplec ... Tom I".
+      if (candidatos.isEmpty()) {
+        Query<Libro> queryBase = equal(Libro.LIBRO_TITULO_BASE_COMPARABLE, Libro.tituloComparableSinVolumen(titulo));
+        if (calibreLanguage != null) {
+          queryBase = and(queryBase, equal(Libro.LIBRO_IDIOMA, calibreLanguage.getEplLabel()));
+        }
+        try (ResultSet<Libro> queryBaseResult = libreria.retrieve(queryBase)) {
+          candidatos = queryBaseResult.stream()
+              .toList();
+        }
+      }
 
       // Preferimos la coincidencia completa de autores, pero no descartamos
       // un libro inequívoco cuando Calibre y EPL escriben los autores de forma

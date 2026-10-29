@@ -38,6 +38,8 @@ public class AmuTorrentService {
   private String apiKey;
   @Value("${amutorrent_instance_id:}")
   private String instanceId;
+  @Value("${amutorrent_client_id:qbittorrent}")
+  private String clientId;
   @Value("${amutorrent_category:EPL}")
   private String category;
 
@@ -106,6 +108,8 @@ public class AmuTorrentService {
       HashMap<String, Object> body = new HashMap<>();
       body.put("links", java.util.List.of(magnet));
       body.put("instanceId", instanceId);
+      // Required by aMuTorrent when selecting the configured download client.
+      body.put("clientId", clientId);
       // aMuTorrent REST v1 calls this field "label" (categoryName is used by
       // other API/WebSocket payloads and is ignored by the REST bridge).
       body.put("label", category);
