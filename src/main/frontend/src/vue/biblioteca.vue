@@ -833,7 +833,8 @@ div.fechaBaseSelector {
 
 .hardcover-cell {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 0.35em;
 }
 
