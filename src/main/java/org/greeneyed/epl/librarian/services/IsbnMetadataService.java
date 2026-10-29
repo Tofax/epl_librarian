@@ -51,6 +51,15 @@ public class IsbnMetadataService {
   @Value("${isbn_min_confidence:0.80}")
   private double minimumConfidence;
 
+  @Value("${isbn_provider:auto}")
+  private String provider;
+
+  @Value("${google_books_api_key:}")
+  private String googleBooksApiKey;
+
+  @Value("${isbndb_api_key:}")
+  private String isbnDbApiKey;
+
   @Value("${isbn_enrichment_max_per_run:50}")
   private int maximumAttemptsPerRun;
 
@@ -168,15 +177,21 @@ public class IsbnMetadataService {
 
   private Result lookup(Libro libro) {
     try {
+      Result best = null;
+      if ("isbndb".equalsIgnoreCase(provider) || "auto".equalsIgnoreCase(provider)) {
+        best = lookupIsbnDb(libro);
+      }
+      if ("googlebooks".equalsIgnoreCase(provider) || "google".equalsIgnoreCase(provider) || "auto".equalsIgnoreCase(provider)) {
+        Result google = lookupGoogleBooks(libro);
+        if (google != null && (best == null || google.confidence() > best.confidence())) {
+          best = google;
+        }
+      }
+      if (best != null && best.confidence() >= minimumConfidence) {
+        return best;
+      }
       Result openLibrary = lookupOpenLibrary(libro);
-      if (openLibrary != null && openLibrary.confidence() >= minimumConfidence) {
-        return openLibrary;
-      }
-      Result google = lookupGoogleBooks(libro);
-      if (google != null && (openLibrary == null || google.confidence() > openLibrary.confidence())) {
-        return google;
-      }
-      return openLibrary;
+      return openLibrary != null && (best == null || openLibrary.confidence() > best.confidence()) ? openLibrary : best;
     } catch (RateLimitException e) {
       rateLimitedUntil = System.currentTimeMillis() + Duration.ofHours(6)
           .toMillis();
@@ -186,6 +201,27 @@ public class IsbnMetadataService {
       log.debug("No s'ha pogut obtenir ISBN per '{}': {}", libro.getTitulo(), e.getMessage());
       return null;
     }
+  }
+
+  private Result lookupIsbnDb(Libro libro) throws Exception {
+    if (isbnDbApiKey.isBlank()) {
+      return null;
+    }
+    String query = "title:" + quote(libro.getTitulo()) + " author:" + quote(libro.getAutor());
+    JsonNode root = get("https://api2.isbndb.com/books/" + encode(query), "x-api-key", isbnDbApiKey);
+    Result best = null;
+    for (JsonNode item : root.path("books")) {
+      double score = score(libro, item.path("title")
+          .asText(), item.path("authors"), item.path("language"));
+      String isbn = validIsbnNode(item.path("isbn13"));
+      if (isbn == null) {
+        isbn = validIsbnNode(item.path("isbn"));
+      }
+      if (isbn != null && score >= minimumConfidence && (best == null || score > best.confidence())) {
+        best = new Result(isbn, score, "isbndb");
+      }
+    }
+    return best;
   }
 
   private Result lookupOpenLibrary(Libro libro) throws Exception {
@@ -211,8 +247,9 @@ public class IsbnMetadataService {
   }
 
   private Result lookupGoogleBooks(Libro libro) throws Exception {
+    String apiKey = googleBooksApiKey.isBlank() ? "" : "&key=" + encode(googleBooksApiKey);
     String query = "intitle:" + quote(libro.getTitulo()) + " inauthor:" + quote(libro.getAutor());
-    JsonNode root = get("https://www.googleapis.com/books/v1/volumes?q=" + encode(query) + "&maxResults=5&printType=books");
+    JsonNode root = get("https://www.googleapis.com/books/v1/volumes?q=" + encode(query) + "&maxResults=5&printType=books" + apiKey);
     Result best = null;
     for (JsonNode item : root.path("items")) {
       JsonNode info = item.path("volumeInfo");
@@ -231,6 +268,12 @@ public class IsbnMetadataService {
   }
 
   private JsonNode get(String url) throws Exception {
+    return get(url, null, null);
+  }
+
+  private JsonNode get(String url,
+      String headerName,
+      String headerValue) throws Exception {
     synchronized (this) {
       long wait = requestDelayMs - (System.currentTimeMillis() - lastRequestAt);
       if (wait > 0) {
@@ -238,11 +281,14 @@ public class IsbnMetadataService {
       }
       lastRequestAt = System.currentTimeMillis();
     }
-    HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+    HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(URI.create(url))
         .timeout(Duration.ofSeconds(15))
         .header("User-Agent", "EPL-Librarian/ISBN-enrichment")
-        .GET()
-        .build();
+        .GET();
+    if (headerName != null && headerValue != null) {
+      requestBuilder.header(headerName, headerValue);
+    }
+    HttpRequest request = requestBuilder.build();
     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
     if (response.statusCode() == 429) {
       throw new RateLimitException();
@@ -282,6 +328,15 @@ public class IsbnMetadataService {
       }
     }
     return null;
+  }
+
+  private String validIsbnNode(JsonNode value) {
+    return value.isArray() ? firstValidIsbn(value) : validIsbn(value.asText());
+  }
+
+  private String validIsbn(String value) {
+    String isbn = Libro.isbnNormalizado(value);
+    return isbn != null && (isbn.length() == 10 || isbn.length() == 13) ? isbn : null;
   }
 
   private static String quote(String value) {
