@@ -44,7 +44,7 @@ public class AmuTorrentService {
       return;
     }
     for (Libro book : books) {
-      if (book.getInCalibre() || !"català".equalsIgnoreCase(book.getIdioma()) && !"catalan".equalsIgnoreCase(book.getIdioma())) {
+      if (book.getInCalibre() || !isCatalan(book.getIdioma())) {
         continue;
       }
       for (String magnet : book.getListaMagnetIds()) {
@@ -54,6 +54,15 @@ public class AmuTorrentService {
         }
       }
     }
+  }
+
+  private boolean isCatalan(String language) {
+    if (language == null) {
+      return false;
+    }
+    String normalized = Libro.flattenToAscii(language.trim())
+        .toLowerCase();
+    return "catalan".equals(normalized) || "catala".equals(normalized);
   }
 
   private void submit(String magnet,
