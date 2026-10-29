@@ -211,6 +211,7 @@ public class BibliotecaService {
           .map(mapperService::from)
           .collect(Collectors.toList());
       if (isbnMetadataService.isEnabled()) {
+        isbnMetadataService.beginRun();
         libros.forEach(isbnMetadataService::enrich);
       }
       libreria.addAll(libros);

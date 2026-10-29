@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.greeneyed.epl.librarian.model.Libro;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,6 +42,8 @@ public class IsbnMetadataService {
       .connectTimeout(Duration.ofSeconds(8))
       .build();
   private final Map<String, Result> cache = new ConcurrentHashMap<>();
+  private final Map<String, Long> notFoundCache = new ConcurrentHashMap<>();
+  private final AtomicInteger attemptsThisRun = new AtomicInteger();
 
   @Value("${isbn_enrichment:false}")
   private boolean enabled;
@@ -48,16 +51,29 @@ public class IsbnMetadataService {
   @Value("${isbn_min_confidence:0.80}")
   private double minimumConfidence;
 
+  @Value("${isbn_enrichment_max_per_run:50}")
+  private int maximumAttemptsPerRun;
+
+  @Value("${isbn_enrichment_delay_ms:1200}")
+  private long requestDelayMs;
+
+  @Value("${isbn_not_found_ttl_days:30}")
+  private int notFoundTtlDays;
+
   @Value("${superportable:false}")
   private boolean superPortable;
 
   private Path cacheFile;
+  private Path notFoundCacheFile;
+  private volatile long rateLimitedUntil;
+  private long lastRequestAt;
 
   @PostConstruct
   void loadCache() {
     cacheFile = PreferencesService.findPreferencesFile(superPortable, environment)
         .toPath()
         .resolveSibling("isbn-cache.json");
+    notFoundCacheFile = cacheFile.resolveSibling("isbn-not-found.json");
     try {
       if (Files.isRegularFile(cacheFile)) {
         cache.putAll(objectMapper.readValue(Files.readString(cacheFile), new TypeReference<Map<String, Result>>() {
@@ -67,10 +83,24 @@ public class IsbnMetadataService {
     } catch (Exception e) {
       log.warn("No s'ha pogut carregar la cache d'ISBN {}: {}", cacheFile, e.getMessage());
     }
+    try {
+      if (Files.isRegularFile(notFoundCacheFile)) {
+        notFoundCache.putAll(objectMapper.readValue(Files.readString(notFoundCacheFile), new TypeReference<Map<String, Long>>() {
+        }));
+        log.info("Cache de llibres sense ISBN carregada: {} entrades", notFoundCache.size());
+      }
+    } catch (Exception e) {
+      log.warn("No s'ha pogut carregar la cache de llibres sense ISBN {}: {}", notFoundCacheFile, e.getMessage());
+    }
   }
 
   public boolean isEnabled() {
     return enabled;
+  }
+
+  public void beginRun() {
+    attemptsThisRun.set(0);
+    rateLimitedUntil = 0;
   }
 
   public void enrich(Libro libro) {
@@ -78,17 +108,41 @@ public class IsbnMetadataService {
       return;
     }
     String key = Libro.tituloComparable(libro.getTitulo()) + "|" + Libro.flattenToAscii(libro.getAutor()) + "|" + libro.getAnyoPublicacion();
+    Long notFoundAt = notFoundCache.get(key);
+    if (notFoundAt != null && notFoundAt > System.currentTimeMillis() - Duration.ofDays(notFoundTtlDays)
+        .toMillis()) {
+      return;
+    }
+    if (attemptsThisRun.incrementAndGet() > maximumAttemptsPerRun) {
+      return;
+    }
     Result result = cache.get(key);
     if (result == null) {
       result = lookup(libro);
       if (result != null) {
         cache.put(key, result);
         saveCache();
+        notFoundCache.remove(key);
+      } else if (rateLimitedUntil <= System.currentTimeMillis()) {
+        notFoundCache.put(key, System.currentTimeMillis());
+        saveNotFoundCache();
       }
     }
     if (result != null && result.confidence() >= minimumConfidence) {
       libro.setIsbn(result.isbn());
       log.debug("ISBN {} asignado a '{}' con confianza {} mediante {}", result.isbn(), libro.getTitulo(), result.confidence(), result.provider());
+    }
+  }
+
+  private synchronized void saveNotFoundCache() {
+    try {
+      Files.createDirectories(notFoundCacheFile.getParent());
+      Path temporary = notFoundCacheFile.resolveSibling(notFoundCacheFile.getFileName() + ".tmp");
+      Files.writeString(temporary, objectMapper.writerWithDefaultPrettyPrinter()
+          .writeValueAsString(new HashMap<>(notFoundCache)));
+      Files.move(temporary, notFoundCacheFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    } catch (IOException e) {
+      log.warn("No s'ha pogut guardar la cache de llibres sense ISBN {}: {}", notFoundCacheFile, e.getMessage());
     }
   }
 
@@ -115,8 +169,13 @@ public class IsbnMetadataService {
         return google;
       }
       return openLibrary;
+    } catch (RateLimitException e) {
+      rateLimitedUntil = System.currentTimeMillis() + Duration.ofHours(6)
+          .toMillis();
+      log.warn("Proveïdor d'ISBN ha limitat les peticions (429). Pausant consultes durant 6 hores.");
+      return null;
     } catch (Exception e) {
-      log.warn("No s'ha pogut obtenir ISBN per '{}': {}", libro.getTitulo(), e.getMessage());
+      log.debug("No s'ha pogut obtenir ISBN per '{}': {}", libro.getTitulo(), e.getMessage());
       return null;
     }
   }
@@ -164,12 +223,22 @@ public class IsbnMetadataService {
   }
 
   private JsonNode get(String url) throws Exception {
+    synchronized (this) {
+      long wait = requestDelayMs - (System.currentTimeMillis() - lastRequestAt);
+      if (wait > 0) {
+        Thread.sleep(wait);
+      }
+      lastRequestAt = System.currentTimeMillis();
+    }
     HttpRequest request = HttpRequest.newBuilder(URI.create(url))
         .timeout(Duration.ofSeconds(15))
         .header("User-Agent", "EPL-Librarian/ISBN-enrichment")
         .GET()
         .build();
     HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() == 429) {
+      throw new RateLimitException();
+    }
     if (response.statusCode() / 100 != 2) {
       throw new IllegalStateException("HTTP " + response.statusCode());
     }
@@ -216,5 +285,9 @@ public class IsbnMetadataService {
   }
 
   private record Result(String isbn, double confidence, String provider) {
+  }
+
+  private static final class RateLimitException extends Exception {
+    private static final long serialVersionUID = 1L;
   }
 }
