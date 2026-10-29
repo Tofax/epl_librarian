@@ -10,7 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -35,6 +37,8 @@ public class HardcoverMetadataService {
   private static final String ENDPOINT = "https://api.hardcover.app/v1/graphql";
   private static final String QUERY = "query Search($query:String!, $query_type:String!, $per_page:Int!) { "
       + "search(query:$query, query_type:$query_type, per_page:$per_page) { ids } }";
+  private static final String HYDRATE_QUERY = "query Hydrate($ids:[Int!]!) { books(where:{id:{_in:$ids}}) "
+      + "{ id title slug contributions { author { name } } } }";
 
   private final ObjectMapper objectMapper;
   private final Environment environment;
@@ -118,6 +122,7 @@ public class HardcoverMetadataService {
     }
     if (result != null) {
       libro.setHardcoverId(result.hardcoverId());
+      libro.setHardcoverSlug(result.slug());
     }
   }
 
@@ -137,6 +142,7 @@ public class HardcoverMetadataService {
       return false;
     }
     libro.setHardcoverId(result.hardcoverId());
+    libro.setHardcoverSlug(result.slug());
     return true;
   }
 
@@ -147,7 +153,7 @@ public class HardcoverMetadataService {
       return false;
     }
     libro.setHardcoverId(normalized);
-    cache.put(cacheKey(libro), new Result(normalized, "manual"));
+    cache.put(cacheKey(libro), new Result(normalized, null, "manual"));
     save(cacheFile, cache);
     return true;
   }
@@ -162,35 +168,25 @@ public class HardcoverMetadataService {
       if (wait > 0)
         Thread.sleep(wait);
       String searchText = (libro.getTitulo() + " " + (libro.getAutor() == null ? "" : libro.getAutor())).trim();
-      String body = objectMapper
-          .writeValueAsString(Map.of("query", QUERY, "variables", Map.of("query", searchText, "query_type", "book", "per_page", 5)));
-      HttpRequest request = HttpRequest.newBuilder(URI.create(ENDPOINT))
-          .timeout(Duration.ofSeconds(20))
-          .header("Authorization", "Bearer " + apiToken.trim())
-          .header("Content-Type", "application/json")
-          .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
-          .build();
-      lastRequestAt = System.currentTimeMillis();
-      HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-      if (response.statusCode() == 429) {
-        rateLimitedUntil = System.currentTimeMillis() + Duration.ofHours(6)
-            .toMillis();
-        log.warn("Hardcover ha limitat les peticions (429). Pausant consultes durant 6 hores.");
-        return null;
-      }
-      if (response.statusCode() / 100 != 2) {
-        log.warn("Hardcover ha respost HTTP {}", response.statusCode());
-        return null;
-      }
-      JsonNode ids = objectMapper.readTree(response.body())
-          .path("data")
+      JsonNode search = post(QUERY, Map.of("query", searchText, "query_type", "book", "per_page", 5));
+      JsonNode ids = search.path("data")
           .path("search")
           .path("ids");
       if (!ids.isArray() || ids.isEmpty())
         return null;
-      String id = ids.get(0)
-          .asText();
-      return id.isBlank() ? null : new Result(id, "hardcover");
+      Set<Integer> candidateIds = new HashSet<>();
+      ids.forEach(id -> {
+        if (id.canConvertToInt())
+          candidateIds.add(id.asInt());
+      });
+      if (candidateIds.isEmpty())
+        return null;
+      JsonNode books = post(HYDRATE_QUERY, Map.of("ids", candidateIds)).path("data")
+          .path("books");
+      Result best = bestMatch(books, libro);
+      if (best == null)
+        log.info("Hardcover no ha trobat una coincidència fiable per '{}'", libro.getTitulo());
+      return best;
     } catch (InterruptedException e) {
       Thread.currentThread()
           .interrupt();
@@ -199,6 +195,88 @@ public class HardcoverMetadataService {
       log.warn("No s'ha pogut consultar Hardcover per '{}': {}", libro.getTitulo(), e.getMessage());
       return null;
     }
+  }
+
+  private JsonNode post(String query,
+      Map<String, ?> variables) throws Exception {
+    String body = objectMapper.writeValueAsString(Map.of("query", query, "variables", variables));
+    HttpRequest request = HttpRequest.newBuilder(URI.create(ENDPOINT))
+        .timeout(Duration.ofSeconds(20))
+        .header("Authorization", "Bearer " + apiToken.trim())
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+        .build();
+    lastRequestAt = System.currentTimeMillis();
+    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() == 429) {
+      rateLimitedUntil = System.currentTimeMillis() + Duration.ofHours(6)
+          .toMillis();
+      throw new IOException("Hardcover ha limitat les peticions (429)");
+    }
+    if (response.statusCode() / 100 != 2)
+      throw new IOException("Hardcover HTTP " + response.statusCode());
+    JsonNode root = objectMapper.readTree(response.body());
+    if (root.has("errors"))
+      throw new IOException("Hardcover ha retornat errors GraphQL");
+    return root;
+  }
+
+  private Result bestMatch(JsonNode books,
+      Libro target) {
+    if (!books.isArray())
+      return null;
+    Set<String> targetTitle = words(target.getTitulo());
+    Set<String> targetAuthors = words(target.getAutor());
+    Result best = null;
+    double bestScore = 0;
+    for (JsonNode book : books) {
+      Set<String> candidateTitle = words(book.path("title")
+          .asText());
+      double titleScore = overlap(targetTitle, candidateTitle);
+      if (titleScore < 0.65)
+        continue;
+      Set<String> candidateAuthors = new HashSet<>();
+      book.path("contributions")
+          .forEach(contribution -> candidateAuthors.addAll(words(contribution.path("author")
+              .path("name")
+              .asText())));
+      double authorScore = targetAuthors.isEmpty() ? 1.0 : overlap(targetAuthors, candidateAuthors);
+      if (!targetAuthors.isEmpty() && authorScore < 0.25)
+        continue;
+      double score = titleScore * 0.7 + authorScore * 0.3;
+      if (score > bestScore && book.path("id")
+          .canConvertToInt()) {
+        bestScore = score;
+        best = new Result(book.path("id")
+            .asText(),
+            book.path("slug")
+                .asText(null),
+            "hardcover");
+      }
+    }
+    return best;
+  }
+
+  private Set<String> words(String value) {
+    Set<String> result = new HashSet<>();
+    if (value == null)
+      return result;
+    for (String word : Libro.flattenToAscii(value)
+        .toLowerCase()
+        .split("[^a-z0-9]+")) {
+      if (word.length() > 2)
+        result.add(word);
+    }
+    return result;
+  }
+
+  private double overlap(Set<String> left,
+      Set<String> right) {
+    if (left.isEmpty())
+      return 0;
+    Set<String> intersection = new HashSet<>(left);
+    intersection.retainAll(right);
+    return (double) intersection.size() / left.size();
   }
 
   private void read(Path file,
@@ -225,6 +303,6 @@ public class HardcoverMetadataService {
     }
   }
 
-  private record Result(String hardcoverId, String provider) {
+  private record Result(String hardcoverId, String slug, String provider) {
   }
 }

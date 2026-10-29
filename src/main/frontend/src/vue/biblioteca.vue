@@ -627,7 +627,7 @@ export default {
         .finally(() => this.$set(this.hardcoverLoading, libro.id, false));
     },
     hardcoverUrl(libro) {
-      return `https://hardcover.app/books/${encodeURIComponent(libro.hardcoverId)}`;
+      return `https://hardcover.app/books/${encodeURIComponent(libro.hardcoverSlug || libro.hardcoverId)}`;
     },
     obreHardcoverManual(libro) {
       this.$set(this.hardcoverManualVisible, libro.id, true);

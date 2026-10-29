@@ -98,6 +98,8 @@ public class Libro {
 
   private String hardcoverId;
 
+  private String hardcoverSlug;
+
   private String publicado;
 
   private LocalDate fechaPublicacion;
