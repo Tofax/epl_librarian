@@ -237,6 +237,39 @@
           ></b-icon>
         </template>
       </b-table-column>
+      <b-table-column field="ISBN" label="ISBN" width="13%">
+        <template v-slot="props">
+          <div v-if="props.row.isbn" class="isbn-value">{{ props.row.isbn }}</div>
+          <div v-else>
+            <b-button
+              size="is-small"
+              type="is-info"
+              icon-pack="fa"
+              icon-left="search"
+              :loading="isbnLoading[props.row.id]"
+              @click.stop="cercaIsbn(props.row)"
+            >Cerca ISBN</b-button>
+          </div>
+          <b-field grouped class="isbn-manual-field">
+            <b-input
+              v-model="isbnManual[props.row.id]"
+              size="is-small"
+              placeholder="ISBN manual"
+              @click.native.stop
+            />
+            <p class="control">
+              <b-button
+                size="is-small"
+                type="is-success"
+                icon-pack="fa"
+                icon-left="save"
+                :disabled="!isbnManual[props.row.id]"
+                @click.stop="desaIsbn(props.row)"
+              />
+            </p>
+          </b-field>
+        </template>
+      </b-table-column>
       <b-table-column
         field="POR_DESCARTE"
         label="Descarte"
@@ -367,6 +400,8 @@ export default {
       ocultarDescartados: false,
       fechaBase: null,
       timeAgo: new TimeAgo('ca'),
+      isbnLoading: {},
+      isbnManual: {},
     };
   },
   computed: {
@@ -542,6 +577,31 @@ export default {
           });
           throw error;
         });
+    },
+    cercaIsbn(libro) {
+      this.$set(this.isbnLoading, libro.id, true);
+      axios.post(`/librarian/libro/${libro.id}/isbn/buscar`)
+        .then(({ data }) => {
+          if (data.isbn) {
+            this.$set(libro, 'isbn', data.isbn);
+            this.$buefy.notification.open({ type: 'is-success', duration: 3000, message: `ISBN trobat: ${data.isbn}`, hasIcon: true });
+          } else {
+            this.$buefy.notification.open({ type: 'is-warning', duration: 3000, message: 'No s’ha trobat cap ISBN fiable.', hasIcon: true });
+          }
+        })
+        .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'Error cercant l’ISBN.', hasIcon: true }))
+        .finally(() => this.$set(this.isbnLoading, libro.id, false));
+    },
+    desaIsbn(libro) {
+      const formData = new FormData();
+      formData.append('isbn', this.isbnManual[libro.id]);
+      axios.post(`/librarian/libro/${libro.id}/isbn`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        .then(({ data }) => {
+          this.$set(libro, 'isbn', data.isbn);
+          this.$set(this.isbnManual, libro.id, '');
+          this.$buefy.notification.open({ type: 'is-success', duration: 3000, message: `ISBN desat: ${data.isbn}`, hasIcon: true });
+        })
+        .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'ISBN no vàlid o error en desar-lo.', hasIcon: true }));
     },
     guardarFechaBase() {
       if (this.fechaBase) {

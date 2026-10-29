@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
@@ -596,6 +597,51 @@ public class BibliotecaService {
       libreria.addAll(librosYaNoEnCablibre);
       log.debug("Actualizados {} libros que ya no tenemos en Calibre.", librosYaNoEnCablibre.size());
       log.info("Recopilados {} libros de Calibre", enCalibre.size());
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  public Optional<Libro> findLibro(int id) {
+    try (ResultSet<Libro> result = libreria.retrieve(equal(Libro.LIBRO_ID, id))) {
+      return result.stream()
+          .findFirst();
+    }
+  }
+
+  public Optional<Libro> searchIsbn(int id) {
+    writeLock.lock();
+    try {
+      Optional<Libro> found = findLibro(id);
+      if (found.isPresent()) {
+        Libro libro = found.get();
+        libreria.remove(libro);
+        isbnMetadataService.searchNow(libro);
+        libreria.add(libro);
+        return Optional.of(libro);
+      }
+      return Optional.empty();
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  public Optional<Libro> setManualIsbn(int id,
+      String isbn) {
+    writeLock.lock();
+    try {
+      Optional<Libro> found = findLibro(id);
+      if (found.isPresent()) {
+        Libro libro = found.get();
+        libreria.remove(libro);
+        if (!isbnMetadataService.setManualIsbn(libro, isbn)) {
+          libreria.add(libro);
+          return Optional.empty();
+        }
+        libreria.add(libro);
+        return Optional.of(libro);
+      }
+      return Optional.empty();
     } finally {
       writeLock.unlock();
     }

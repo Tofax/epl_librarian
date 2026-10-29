@@ -25,6 +25,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -123,6 +125,23 @@ public class LibrarianAPIController {
         ocultarDescartados);
     log.trace("BusquedaLibro: {}", busquedaLibro);
     return ResponseEntity.ok(bibliotecaService.paginaLibros(busquedaLibro));
+  }
+
+  @PostMapping(value = "/libro/{id}/isbn/buscar")
+  public ResponseEntity<Libro> buscarIsbn(@PathVariable int id) {
+    return bibliotecaService.searchIsbn(id)
+        .map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.notFound()
+            .build());
+  }
+
+  @PostMapping(value = "/libro/{id}/isbn")
+  public ResponseEntity<Libro> guardarIsbn(@PathVariable int id,
+      @RequestParam String isbn) {
+    return bibliotecaService.setManualIsbn(id, isbn)
+        .map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.badRequest()
+            .build());
   }
 
   @GetMapping(value = "/top_autores_propios")
