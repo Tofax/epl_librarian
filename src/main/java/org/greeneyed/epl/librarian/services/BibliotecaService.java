@@ -118,9 +118,6 @@ public class BibliotecaService {
     , POR_CALIBRE(queryOptions(orderBy(ascending(Libro.LIBRO_EN_CALIBRE), ascending(Libro.LIBRO_TITULO))),
         queryOptions(orderBy(descending(Libro.LIBRO_EN_CALIBRE), descending(Libro.LIBRO_TITULO))))
     //
-    , POR_HARDCOVER(queryOptions(orderBy(ascending(Libro.LIBRO_HARDCOVER_ID), ascending(Libro.LIBRO_TITULO))),
-        queryOptions(orderBy(descending(Libro.LIBRO_HARDCOVER_ID), descending(Libro.LIBRO_TITULO))))
-    //
     , POR_DESCARTE(queryOptions(orderBy(ascending(Libro.LIBRO_DESCARTADO), ascending(Libro.LIBRO_TITULO))),
         queryOptions(orderBy(descending(Libro.LIBRO_DESCARTADO), descending(Libro.LIBRO_TITULO))))
     //
@@ -147,7 +144,7 @@ public class BibliotecaService {
   private final PreferencesService preferencesService;
   private final CalibreService calibreService;
   private final VersionService versionService;
-  private final HardcoverMetadataService hardcoverMetadataService;
+  private final CalibreLinkService calibreLinkService;
   private final AmuTorrentService amuTorrentService;
 
   @Getter
@@ -172,7 +169,6 @@ public class BibliotecaService {
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_TITULO_COMPARABLE));
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_AUTOR));
     libreria.addIndex(SuffixTreeIndex.onAttribute(Libro.LIBRO_IDIOMA));
-    libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_HARDCOVER_ID));
     libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_PUBLICADO));
     libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_AUTORES));
     libreria.addIndex(HashIndex.onAttribute(Libro.LIBRO_GENEROS));
@@ -214,10 +210,6 @@ public class BibliotecaService {
           .stream()
           .map(mapperService::from)
           .collect(Collectors.toList());
-      if (hardcoverMetadataService.isEnabled()) {
-        hardcoverMetadataService.beginRun();
-        libros.forEach(hardcoverMetadataService::enrich);
-      }
       libreria.addAll(libros);
       log.info("Libros a\u00f1adidos.");
       updateCalibre(false);
@@ -492,15 +484,14 @@ public class BibliotecaService {
   private CalibreService.QuadFunction<String, String, CalibreService.CALIBRE_LANGUAGE, String, List<Integer>> SEARCH_AND_UDPATE_BOOK = (titulo,
       autores,
       calibreLanguage,
-      hardcoverId) -> {
+      ignored) -> {
     List<Libro> aModificar = new ArrayList<>();
     List<Integer> ids = null;
     Set<String> autoresSet = Arrays.asList(autores.split(" & "))
         .stream()
         .map(Autor::getNombreComparable)
         .collect(Collectors.toSet());
-    Query<Libro> query = hardcoverId != null && !hardcoverId.isBlank() ? equal(Libro.LIBRO_HARDCOVER_ID, Libro.hardcoverIdNormalizado(hardcoverId))
-        : equal(Libro.LIBRO_TITULO_COMPARABLE, Libro.tituloComparable(titulo));
+    Query<Libro> query = equal(Libro.LIBRO_TITULO_COMPARABLE, Libro.tituloComparable(titulo));
     if (calibreLanguage != null) {
       query = and(query, equal(Libro.LIBRO_IDIOMA, calibreLanguage.getEplLabel()));
     }
@@ -516,7 +507,7 @@ public class BibliotecaService {
             }
           });
     }
-    if (!aModificar.isEmpty()) {
+    if (aModificar.size() == 1) {
       ids = aModificar.stream()
           .map(Libro::getId)
           .toList();
@@ -582,6 +573,7 @@ public class BibliotecaService {
       // Actualizamos segun los datos que tenemos
       log.info("Recopilando libros de Calibre...");
       Set<Integer> enCalibre = calibreService.updateLibros(SEARCH_AND_UDPATE_BOOK);
+      calibreLinkService.save(calibreService.getEplToCalibre());
       List<Libro> librosYaNoEnCablibre = libreria.stream()
           .filter(Libro::getInCalibre)
           .filter(libro -> !enCalibre.contains(libro.getId()))
@@ -612,41 +604,4 @@ public class BibliotecaService {
     }
   }
 
-  public Optional<Libro> searchHardcover(int id) {
-    writeLock.lock();
-    try {
-      Optional<Libro> found = findLibro(id);
-      if (found.isPresent()) {
-        Libro libro = found.get();
-        libreria.remove(libro);
-        hardcoverMetadataService.searchNow(libro);
-        libreria.add(libro);
-        return Optional.of(libro);
-      }
-      return Optional.empty();
-    } finally {
-      writeLock.unlock();
-    }
-  }
-
-  public Optional<Libro> setManualHardcoverId(int id,
-      String hardcoverId) {
-    writeLock.lock();
-    try {
-      Optional<Libro> found = findLibro(id);
-      if (found.isPresent()) {
-        Libro libro = found.get();
-        libreria.remove(libro);
-        if (!hardcoverMetadataService.setManualHardcoverId(libro, hardcoverId)) {
-          libreria.add(libro);
-          return Optional.empty();
-        }
-        libreria.add(libro);
-        return Optional.of(libro);
-      }
-      return Optional.empty();
-    } finally {
-      writeLock.unlock();
-    }
-  }
 }

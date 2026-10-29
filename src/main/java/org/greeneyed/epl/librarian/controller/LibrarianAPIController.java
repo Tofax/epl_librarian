@@ -127,23 +127,6 @@ public class LibrarianAPIController {
     return ResponseEntity.ok(bibliotecaService.paginaLibros(busquedaLibro));
   }
 
-  @PostMapping(value = "/libro/{id}/hardcover/buscar")
-  public ResponseEntity<Libro> buscarHardcover(@PathVariable int id) {
-    return bibliotecaService.searchHardcover(id)
-        .map(ResponseEntity::ok)
-        .orElseGet(() -> ResponseEntity.notFound()
-            .build());
-  }
-
-  @PostMapping(value = "/libro/{id}/hardcover")
-  public ResponseEntity<Libro> guardarHardcover(@PathVariable int id,
-      @RequestParam String hardcoverId) {
-    return bibliotecaService.setManualHardcoverId(id, hardcoverId)
-        .map(ResponseEntity::ok)
-        .orElseGet(() -> ResponseEntity.badRequest()
-            .build());
-  }
-
   @GetMapping(value = "/top_autores_propios")
   public ResponseEntity<Pagina<Autor>> paginaAutores(@RequestParam(name = "por_pagina", defaultValue = "10") int porPagina) {
     Pagina<Autor> topAutores = bibliotecaService.getTopAutores(porPagina);

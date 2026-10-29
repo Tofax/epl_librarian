@@ -110,11 +110,9 @@ El programa sincroniza automáticamente los datos de Calibre al arrancar, pero t
 
 Esta funcionalidad es útil cuando estamos añadiendo al Calibre libros que nos faltán y queremos actualizar los resultados del filtro "Ocultar los que tengo/descartados".
 
-### Integración con Hardcover y aMuTorrent
+### Vinculación persistente con Calibre y aMuTorrent
 
-La comparación con Calibre utiliza el `hardcover_id`. Para activar la consulta automática añade `hardcover_enrichment=true` y configura `hardcover_api_token` con un token personal de Hardcover. Los resultados se persisten en `hardcover-cache.json` junto a `preferences.properties`, por lo que no se vuelve a consultar el mismo libro en cada arranque. Cada ejecución procesa como máximo `hardcover_enrichment_max_per_run` libros (50 por defecto), espera `hardcover_enrichment_delay_ms` milisegundos entre peticiones (1200 por defecto), pausa seis horas al recibir HTTP 429 y guarda los casos sin resultado en `hardcover-not-found.json` durante 30 días.
-
-Calibre debe guardar el identificador como `hardcover` en la tabla `identifiers`; EPL Librarian lo lee en modo solo lectura y lo compara directamente con el ID obtenido de Hardcover.
+La comparación con Calibre utiliza el identificador EPL cuando existe y, para libros añadidos desde otras fuentes, una coincidencia única por título, autor e idioma. Las vinculaciones encontradas se guardan en `calibre-links.json` junto a `preferences.properties`, sin modificar `metadata.db` cuando Calibre está en modo solo lectura.
 
 La descarga automática de libros catalanes que falten es opcional y permanece desactivada por defecto. Para activarla hay que configurar `amutorrent_enabled=true`, `amutorrent_url`, `amutorrent_api_key`, `amutorrent_instance_id` y opcionalmente `amutorrent_category`. EPL Librarian enviará el primer magnet del libro a `/api/v1/downloads/magnets` de aMuTorrent únicamente cuando la integración con Calibre esté activa y el libro no consti a la biblioteca.
 

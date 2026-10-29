@@ -150,10 +150,6 @@ public class EplCSVProcessor implements EnvironmentAware {
     @CsvBindByPosition(position = 16)
     private String portadaCompleta;
 
-    // Optional enrichment columns; the current EPL export does not provide them.
-    @CsvBindByPosition(position = 17)
-    private String hardcoverId;
-
     @CsvBindByPosition(position = 18)
     private String editorial;
 

@@ -8,6 +8,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -67,6 +69,12 @@ public class CalibreService {
   private final PreferencesService preferencesService;
   private Optional<File> calibreMetadata = null;
   private String url;
+  private final Map<Integer, Integer> eplToCalibre = new HashMap<>();
+
+  public Map<Integer, Integer> getEplToCalibre() {
+    return new HashMap<>(eplToCalibre);
+  }
+
   private static final String TODOS_LOS_LIBROS_STMNT = """
        SELECT DISTINCT
        	group_concat(AUT.name, ' & '),
@@ -74,7 +82,7 @@ public class CalibreService {
        	BOK.id,
       	LNG.lang_code,
         IDE.val epl_id,
-        HARDCOVER.val hardcover_id
+        NULL
        FROM books BOK
        INNER JOIN books_authors_link LNK
          ON LNK.book = BOK.id
@@ -86,8 +94,6 @@ public class CalibreService {
          ON LNG.id = LNGK.lang_code
        LEFT JOIN (SELECT * FROM identifiers WHERE type='epl') IDE
          ON IDE.book = BOK.ID
-       LEFT JOIN (SELECT book, max(val) val FROM identifiers WHERE type IN ('hardcover','hardcover_id') GROUP BY book) HARDCOVER
-         ON HARDCOVER.book = BOK.ID
        GROUP BY BOK.id
        ORDER BY BOK.id, LNK.id
       """;
@@ -103,7 +109,7 @@ public class CalibreService {
        	BOK.id,
       	LNG.lang_code,
         coalesce(IDE.val,CAST(IDG.value as integer) - 10000000) epl_id_2,
-        HARDCOVER.val hardcover_id
+        NULL
        FROM books BOK
        INNER JOIN books_authors_link LNK
          ON LNK.book = BOK.id
@@ -115,8 +121,6 @@ public class CalibreService {
          ON LNG.id = LNGK.lang_code
        LEFT JOIN (SELECT * FROM identifiers WHERE type='epl') IDE
          ON IDE.book = BOK.ID
-       LEFT JOIN (SELECT book, max(val) val FROM identifiers WHERE type IN ('hardcover','hardcover_id') GROUP BY book) HARDCOVER
-         ON HARDCOVER.book = BOK.ID
        LEFT JOIN custom_column_%s IDG
          ON IDG.book  = BOK.ID
        GROUP BY BOK.id
@@ -165,6 +169,7 @@ public class CalibreService {
 
   public Set<Integer> updateLibros(QuadFunction<String, String, CALIBRE_LANGUAGE, String, List<Integer>> searchAndUpdateAction) {
     Set<Integer> inCalibre = new HashSet<>();
+    eplToCalibre.clear();
     if (enabled) {
       String todosLosLibrosStmnt = TODOS_LOS_LIBROS_STMNT;
       try (Connection con = DriverManager.getConnection(url, sqliteConfig().toProperties());
@@ -197,18 +202,20 @@ public class CalibreService {
             log.error("Lenguaje de Calibre no detectado, notifícalo y lo añadiremos a la lista: {}", languageCode);
           }
           String eplId = rs.getString(5);
-          String hardcoverId = rs.getString(6);
           if (eplId != null) {
             try {
-              inCalibre.add(Integer.parseInt(eplId));
+              Integer eplBookId = Integer.parseInt(eplId);
+              inCalibre.add(eplBookId);
+              eplToCalibre.put(eplBookId, calibreId);
             } catch (Exception e) {
               log.error("Error detectando identificador EPL en calibre del libro {} ({}) no tiene el formato correcto () ha de ser un entero: {}",
                   titulo, autores, eplId);
             }
           } else {
-            List<Integer> ids = searchAndUpdateAction.apply(titulo, autores, calibreLanguage, hardcoverId);
+            List<Integer> ids = searchAndUpdateAction.apply(titulo, autores, calibreLanguage, null);
             if (ids != null) {
               inCalibre.addAll(ids);
+              ids.forEach(id -> eplToCalibre.put(id, calibreId));
               if (preferencesService.isUpdatingCalibre()) {
                 Integer detectedEplId = ids.get(0);
                 try {

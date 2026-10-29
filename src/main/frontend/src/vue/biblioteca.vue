@@ -237,72 +237,6 @@
           ></b-icon>
         </template>
       </b-table-column>
-      <b-table-column field="POR_HARDCOVER" label="Hardcover" sortable width="13%">
-        <template v-slot="props">
-          <div class="hardcover-cell">
-            <div class="hardcover-value" :class="{ 'hardcover-value-missing': !props.row.hardcoverId }">
-              <b-icon
-                pack="fa"
-                :type="props.row.hardcoverId ? 'is-success' : 'is-light'"
-                :icon="props.row.hardcoverId ? 'check-circle' : 'question-circle'"
-              />
-              <a
-                v-if="props.row.hardcoverId"
-                :href="hardcoverUrl(props.row)"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="hardcover-link"
-                @click.stop
-              >{{ props.row.hardcoverId }}</a>
-              <span v-else>Sense ID</span>
-            </div>
-            <b-dropdown aria-role="list" position="is-bottom-left" class="hardcover-actions">
-              <template #trigger>
-                <b-button
-                  size="is-small"
-                  type="is-light"
-                  icon-pack="fa"
-                  icon-left="search"
-                  :loading="hardcoverLoading[props.row.id]"
-                >{{ props.row.hardcoverId ? 'Modificar' : 'Cerca' }}</b-button>
-              </template>
-              <b-dropdown-item v-if="!props.row.hardcoverId" aria-role="listitem" @click="cercaHardcover(props.row)">
-                <b-icon pack="fa" icon="magic" /> Cerca a Hardcover
-              </b-dropdown-item>
-              <b-dropdown-item aria-role="listitem" @click="obreHardcoverManual(props.row)">
-                <b-icon pack="fa" icon="keyboard" /> Introduir ID manualment
-              </b-dropdown-item>
-            </b-dropdown>
-          </div>
-          <b-field v-if="hardcoverManualVisible[props.row.id]" grouped addons class="hardcover-manual-field">
-            <b-input
-              v-model="hardcoverManual[props.row.id]"
-              size="is-small"
-              placeholder="Hardcover ID"
-              @click.native.stop
-            />
-            <p class="control">
-              <b-button
-                size="is-small"
-                type="is-success"
-                icon-pack="fa"
-                icon-left="save"
-                :disabled="!hardcoverManual[props.row.id]"
-                @click.stop="desaHardcover(props.row)"
-              />
-            </p>
-            <p class="control">
-              <b-button
-                size="is-small"
-                type="is-light"
-                icon-pack="fa"
-                icon="times"
-                @click.stop="$set(hardcoverManualVisible, props.row.id, false)"
-              />
-            </p>
-          </b-field>
-        </template>
-      </b-table-column>
       <b-table-column
         field="POR_DESCARTE"
         label="Descarte"
@@ -433,9 +367,6 @@ export default {
       ocultarDescartados: false,
       fechaBase: null,
       timeAgo: new TimeAgo('ca'),
-      hardcoverLoading: {},
-      hardcoverManual: {},
-      hardcoverManualVisible: {},
     };
   },
   computed: {
@@ -611,43 +542,6 @@ export default {
           });
           throw error;
         });
-    },
-    cercaHardcover(libro) {
-      this.$set(this.hardcoverLoading, libro.id, true);
-      axios.post(`/librarian/libro/${libro.id}/hardcover/buscar`)
-        .then(({ data }) => {
-          if (data.hardcoverId) {
-            this.$set(libro, 'hardcoverId', data.hardcoverId);
-            this.$buefy.notification.open({ type: 'is-success', duration: 3000, message: `Hardcover ID trobat: ${data.hardcoverId}`, hasIcon: true });
-          } else {
-            this.$buefy.notification.open({ type: 'is-warning', duration: 3000, message: 'No s’ha trobat cap Hardcover ID fiable.', hasIcon: true });
-          }
-        })
-        .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'Error cercant a Hardcover.', hasIcon: true }))
-        .finally(() => this.$set(this.hardcoverLoading, libro.id, false));
-    },
-    hardcoverUrl(libro) {
-      return `https://hardcover.app/books/${encodeURIComponent(libro.hardcoverSlug || libro.hardcoverId)}`;
-    },
-    obreHardcoverManual(libro) {
-      this.$set(this.hardcoverManualVisible, libro.id, true);
-      this.$nextTick(() => {
-        const inputs = this.$el.querySelectorAll('.hardcover-manual-field input');
-        const input = inputs[inputs.length - 1];
-        if (input) input.focus();
-      });
-    },
-    desaHardcover(libro) {
-      const formData = new FormData();
-      formData.append('hardcoverId', this.hardcoverManual[libro.id]);
-      axios.post(`/librarian/libro/${libro.id}/hardcover`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-        .then(({ data }) => {
-          this.$set(libro, 'hardcoverId', data.hardcoverId);
-          this.$set(this.hardcoverManual, libro.id, '');
-          this.$set(this.hardcoverManualVisible, libro.id, false);
-          this.$buefy.notification.open({ type: 'is-success', duration: 3000, message: `Hardcover ID desat: ${data.hardcoverId}`, hasIcon: true });
-        })
-        .catch(() => this.$buefy.notification.open({ type: 'is-danger', duration: 3000, message: 'Hardcover ID no vàlid o error en desar-lo.', hasIcon: true }));
     },
     guardarFechaBase() {
       if (this.fechaBase) {
@@ -825,49 +719,6 @@ div.fechaBaseSelector {
   margin-right: 0;
 }
 
-.hardcover-cell,
-.hardcover-value,
-.hardcover-manual-field {
-  white-space: nowrap;
-}
-
-.hardcover-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35em;
-}
-
-.hardcover-value {
-  display: flex;
-  align-items: center;
-  gap: 0.35em;
-  font-weight: 600;
-}
-
-.hardcover-value-missing {
-  color: #888;
-  font-weight: 400;
-}
-
-.hardcover-link {
-  color: inherit;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-}
-
-.hardcover-actions {
-  flex: 0 0 auto;
-}
-
-.hardcover-manual-field {
-  margin-top: 0.4em;
-  margin-bottom: 0;
-}
-
-.hardcover-manual-field .control {
-  margin-left: 0;
-}
 
 #numero_por_pagina {
   float: right;
