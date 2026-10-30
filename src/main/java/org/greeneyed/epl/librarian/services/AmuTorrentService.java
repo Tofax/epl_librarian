@@ -26,6 +26,10 @@ import lombok.extern.slf4j.Slf4j;
 public class AmuTorrentService {
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient = HttpClient.newBuilder()
+      // aMuTorrent serves plain HTTP/1.1. Java's default HTTP/2 preference
+      // sends an h2c preface over cleartext, which Express reports as the
+      // misleading 405 "Invalid HTTP method" response.
+      .version(HttpClient.Version.HTTP_1_1)
       .connectTimeout(Duration.ofSeconds(8))
       .build();
   private final Set<String> submittedMagnets = java.util.concurrent.ConcurrentHashMap.newKeySet();
