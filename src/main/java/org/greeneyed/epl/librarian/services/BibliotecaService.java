@@ -492,6 +492,7 @@ public class BibliotecaService {
         .stream()
         .map(Autor::getNombreComparable)
         .collect(Collectors.toSet());
+    Set<String> autoresCanonicos = autoresCanonicos(autores);
     Query<Libro> query = equal(Libro.LIBRO_TITULO_COMPARABLE, Libro.tituloComparable(titulo));
     if (calibreLanguage != null) {
       query = and(query, equal(Libro.LIBRO_IDIOMA, calibreLanguage.getEplLabel()));
@@ -521,8 +522,7 @@ public class BibliotecaService {
           candidatos = libreria.stream()
               .filter(libro -> calibreLanguage == null || calibreLanguage.getEplLabel()
                   .equals(libro.getIdiomaNormalizado()))
-              .filter(libro -> libro.getListaAutoresNormalizados()
-                  .containsAll(autoresSet) && autoresSet.containsAll(libro.getListaAutoresNormalizados()))
+              .filter(libro -> autoresCompatibles(libro, autoresSet, autoresCanonicos))
               .filter(libro -> {
                 String eplTitle = libro.getTituloComparable();
                 String shorter = eplTitle.length() <= calibreTitle.length() ? eplTitle : calibreTitle;
@@ -549,13 +549,7 @@ public class BibliotecaService {
       // un libro inequívoco cuando Calibre y EPL escriben los autores de forma
       // distinta (por ejemplo, separadores, orden o autores incompletos).
       candidatos.stream()
-          .filter(libro -> {
-            Set<String> autoresSetLibro = libro.getListaAutores()
-                .stream()
-                .map(Autor::getNombreComparable)
-                .collect(Collectors.toSet());
-            return autoresSetLibro.containsAll(autoresSet) && autoresSet.containsAll(autoresSetLibro);
-          })
+          .filter(libro -> autoresCompatibles(libro, autoresSet, autoresCanonicos))
           .forEach(aModificar::add);
 
       if (aModificar.isEmpty() && candidatos.size() == 1) {
@@ -572,6 +566,38 @@ public class BibliotecaService {
     }
     return ids;
   };
+
+  private Set<String> autoresCanonicos(String autores) {
+    return Arrays.stream(autores == null ? new String[0] : autores.split(" & "))
+        .map(this::autorCanonico)
+        .collect(Collectors.toSet());
+  }
+
+  private String autorCanonico(String autor) {
+    if (autor == null || autor.isBlank()) {
+      return "";
+    }
+    return Arrays.stream(Libro.flattenToAscii(autor)
+        .replaceAll("[^a-z0-9]+", " ")
+        .trim()
+        .split("\\s+"))
+        .filter(token -> !token.isBlank())
+        .sorted()
+        .collect(Collectors.joining(" "));
+  }
+
+  private boolean autoresCompatibles(Libro libro,
+      Set<String> autoresExactos,
+      Set<String> autoresCanonicosCalibre) {
+    Set<String> autoresLibro = libro.getListaAutoresNormalizados()
+        .stream()
+        .map(Autor::getNombreComparable)
+        .collect(Collectors.toSet());
+    if (autoresLibro.containsAll(autoresExactos) && autoresExactos.containsAll(autoresLibro)) {
+      return true;
+    }
+    return autoresCanonicosCalibre.equals(autoresCanonicos(libro.getAutor()));
+  }
 
   public Pagina<Autor> getTopAutores(int porPagina) {
     List<Autor> topAutores = autores.stream()
