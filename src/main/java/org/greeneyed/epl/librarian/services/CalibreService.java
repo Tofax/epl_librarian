@@ -175,6 +175,20 @@ public class CalibreService {
     return sqLiteConfig;
   }
 
+  /**
+   * Calibre registers this SQLite function itself. When its metadata.db is opened
+   * through the JDBC driver, Calibre's triggers still reference it, so register a
+   * compatible implementation before any write statements run.
+   */
+  private void registerCalibreFunctions(Connection con) throws SQLException {
+    org.sqlite.Function.create(con, "title_sort", new org.sqlite.Function() {
+      @Override
+      protected void xFunc() throws SQLException {
+        result(value_text(0));
+      }
+    });
+  }
+
   public Set<Integer> updateLibros(QuadFunction<String, String, CALIBRE_LANGUAGE, String, List<Integer>> searchAndUpdateAction) {
     Set<Integer> inCalibre = new HashSet<>();
     eplToCalibre.clear();
@@ -263,59 +277,61 @@ public class CalibreService {
     }
 
     int updated = 0;
-    try (Connection con = DriverManager.getConnection(url, sqliteConfig().toProperties());
-        PreparedStatement findSeries = con.prepareStatement(FIND_SERIES);
-        PreparedStatement insertSeries = con.prepareStatement(INSERT_SERIES, Statement.RETURN_GENERATED_KEYS);
-        PreparedStatement removeBookSeries = con.prepareStatement(REMOVE_BOOK_SERIES);
-        PreparedStatement insertBookSeries = con.prepareStatement(INSERT_BOOK_SERIES);
-        PreparedStatement updateSeriesIndex = con.prepareStatement(UPDATE_SERIES_INDEX)) {
-      con.setAutoCommit(false);
-      for (Libro book : eplBooks) {
-        if (book.getColeccion() == null || book.getColeccion()
-            .isBlank()) {
-          continue;
-        }
-        Integer calibreId = eplToCalibre.get(book.getId());
-        if (calibreId == null) {
-          continue;
-        }
+    try (Connection con = DriverManager.getConnection(url, sqliteConfig().toProperties())) {
+      registerCalibreFunctions(con);
+      try (PreparedStatement findSeries = con.prepareStatement(FIND_SERIES);
+          PreparedStatement insertSeries = con.prepareStatement(INSERT_SERIES, Statement.RETURN_GENERATED_KEYS);
+          PreparedStatement removeBookSeries = con.prepareStatement(REMOVE_BOOK_SERIES);
+          PreparedStatement insertBookSeries = con.prepareStatement(INSERT_BOOK_SERIES);
+          PreparedStatement updateSeriesIndex = con.prepareStatement(UPDATE_SERIES_INDEX)) {
+        con.setAutoCommit(false);
+        for (Libro book : eplBooks) {
+          if (book.getColeccion() == null || book.getColeccion()
+              .isBlank()) {
+            continue;
+          }
+          Integer calibreId = eplToCalibre.get(book.getId());
+          if (calibreId == null) {
+            continue;
+          }
 
-        long seriesId;
-        findSeries.setString(1, book.getColeccion()
-            .trim());
-        try (ResultSet rs = findSeries.executeQuery()) {
-          if (rs.next()) {
-            seriesId = rs.getLong(1);
-          } else {
-            insertSeries.setString(1, book.getColeccion()
-                .trim());
-            insertSeries.executeUpdate();
-            try (ResultSet keys = insertSeries.getGeneratedKeys()) {
-              if (!keys.next()) {
-                throw new SQLException("No se pudo obtener el id de la serie creada");
+          long seriesId;
+          findSeries.setString(1, book.getColeccion()
+              .trim());
+          try (ResultSet rs = findSeries.executeQuery()) {
+            if (rs.next()) {
+              seriesId = rs.getLong(1);
+            } else {
+              insertSeries.setString(1, book.getColeccion()
+                  .trim());
+              insertSeries.executeUpdate();
+              try (ResultSet keys = insertSeries.getGeneratedKeys()) {
+                if (!keys.next()) {
+                  throw new SQLException("No se pudo obtener el id de la serie creada");
+                }
+                seriesId = keys.getLong(1);
               }
-              seriesId = keys.getLong(1);
             }
           }
-        }
 
-        removeBookSeries.setInt(1, calibreId);
-        removeBookSeries.executeUpdate();
-        insertBookSeries.setInt(1, calibreId);
-        insertBookSeries.setLong(2, seriesId);
-        insertBookSeries.executeUpdate();
+          removeBookSeries.setInt(1, calibreId);
+          removeBookSeries.executeUpdate();
+          insertBookSeries.setInt(1, calibreId);
+          insertBookSeries.setLong(2, seriesId);
+          insertBookSeries.executeUpdate();
 
-        BigDecimal volume = book.getVolumen();
-        if (volume == null) {
-          updateSeriesIndex.setNull(1, java.sql.Types.REAL);
-        } else {
-          updateSeriesIndex.setBigDecimal(1, volume);
+          BigDecimal volume = book.getVolumen();
+          if (volume == null) {
+            updateSeriesIndex.setNull(1, java.sql.Types.REAL);
+          } else {
+            updateSeriesIndex.setBigDecimal(1, volume);
+          }
+          updateSeriesIndex.setInt(2, calibreId);
+          updateSeriesIndex.executeUpdate();
+          updated++;
         }
-        updateSeriesIndex.setInt(2, calibreId);
-        updateSeriesIndex.executeUpdate();
-        updated++;
+        con.commit();
       }
-      con.commit();
       log.info("Actualizadas {} series de libros en Calibre", updated);
     } catch (Exception e) {
       log.error("Error actualizando las series en Calibre: {}", e.getMessage(), e);
