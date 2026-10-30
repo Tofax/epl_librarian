@@ -36,7 +36,7 @@ public class AmuTorrentService {
       .connectTimeout(Duration.ofSeconds(8))
       .build();
   private final Set<String> submittedMagnets = java.util.concurrent.ConcurrentHashMap.newKeySet();
-  private static final Pattern MAGNET_HASH = Pattern.compile("(?:^|&)xt=urn:btih:([^&]+)", Pattern.CASE_INSENSITIVE);
+  private static final Pattern MAGNET_HASH = Pattern.compile("(?:[?&])xt=urn:btih:([^&]+)", Pattern.CASE_INSENSITIVE);
 
   @Value("${amutorrent_enabled:false}")
   private boolean enabled;
@@ -165,13 +165,8 @@ public class AmuTorrentService {
       HashMap<String, Object> body = new HashMap<>();
       body.put("links", java.util.List.of(magnet));
       body.put("instanceId", instanceId);
-      // Required by aMuTorrent when selecting the configured download client.
-      body.put("clientId", clientId);
       // aMuTorrent REST v1 documents this field as categoryName.
       body.put("categoryName", category);
-      // Older/current aMuTorrent handlers read the legacy field name instead.
-      // Sending both keeps the integration compatible across releases.
-      body.put("label", category);
       URI endpoint = URI.create(normalizedBaseUrl() + "/api/v1/downloads/magnets");
       HttpRequest request = HttpRequest.newBuilder(endpoint)
           .timeout(Duration.ofSeconds(20))
