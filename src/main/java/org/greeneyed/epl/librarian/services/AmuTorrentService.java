@@ -37,6 +37,7 @@ public class AmuTorrentService {
       .build();
   private final Set<String> submittedMagnets = java.util.concurrent.ConcurrentHashMap.newKeySet();
   private static final Pattern MAGNET_HASH = Pattern.compile("(?:[?&])xt=urn:btih:([^&]+)", Pattern.CASE_INSENSITIVE);
+  private static final Pattern EPL_BOOK_ID = Pattern.compile("(?i)(?:^|[^a-z0-9])EPL_(\\d+)(?:_|$)");
 
   @Value("${amutorrent_enabled:false}")
   private boolean enabled;
@@ -61,7 +62,7 @@ public class AmuTorrentService {
     int withMagnet = 0;
     int withoutMagnet = 0;
     int alreadyQueued = 0;
-    Set<String> queuedHashes = loadQueuedHashes();
+    Set<String> queuedIdentifiers = loadQueuedIdentifiers();
     for (Libro book : books) {
       if (book.getInCalibre() || !isCatalan(book.getIdioma())) {
         continue;
@@ -73,7 +74,7 @@ public class AmuTorrentService {
         if (magnet != null) {
           foundMagnet = true;
           String hash = magnetHash(magnet);
-          if (hash != null && queuedHashes.contains(hash)) {
+          if (isQueued(queuedIdentifiers, hash, book)) {
             alreadyQueued++;
             break;
           }
@@ -92,7 +93,7 @@ public class AmuTorrentService {
         alreadyQueued, withoutMagnet);
   }
 
-  private Set<String> loadQueuedHashes() {
+  private Set<String> loadQueuedIdentifiers() {
     Set<String> result = new HashSet<>();
     if (!enabled || apiKey.isBlank() || instanceId.isBlank()) {
       return result;
@@ -120,12 +121,26 @@ public class AmuTorrentService {
           if (hash != null && !hash.isBlank()) {
             result.add(hash.toLowerCase());
           }
+          String name = item.path("name")
+              .asText(null);
+          if (name != null && !name.isBlank()) {
+            Matcher bookId = EPL_BOOK_ID.matcher(name);
+            if (bookId.find()) {
+              result.add("book:" + bookId.group(1));
+            }
+          }
         }
       }
     } catch (Exception e) {
       log.warn("No s'han pogut consultar les descàrregues existents d'aMuTorrent: {}", e.getMessage());
     }
     return result;
+  }
+
+  private boolean isQueued(Set<String> queuedIdentifiers,
+      String hash,
+      Libro book) {
+    return (hash != null && queuedIdentifiers.contains(hash)) || queuedIdentifiers.contains("book:" + book.getId());
   }
 
   private String magnetHash(String magnet) {
@@ -177,6 +192,15 @@ public class AmuTorrentService {
           .build();
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() / 100 != 2) {
+        // aMuTorrent can return HTTP 500 after qBittorrent has already
+        // accepted the magnet (its error handler reports
+        // "context.error is not a function"). Re-read the queue before
+        // treating the operation as failed, so it is not retried later.
+        Set<String> queuedAfterSubmit = loadQueuedIdentifiers();
+        if (isQueued(queuedAfterSubmit, magnetHash(magnet), book)) {
+          log.info("aMuTorrent ha deixat '{}' a la cua tot i retornar HTTP {}", book.getTitulo(), response.statusCode());
+          return;
+        }
         submittedMagnets.remove(magnet);
         log.warn("aMuTorrent ha rebutjat '{}' (POST {}) (HTTP {}, Allow={}): {}", book.getTitulo(), endpoint, response.statusCode(),
             response.headers()
