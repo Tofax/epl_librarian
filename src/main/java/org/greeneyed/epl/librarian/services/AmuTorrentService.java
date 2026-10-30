@@ -115,7 +115,8 @@ public class AmuTorrentService {
       // Older/current aMuTorrent handlers read the legacy field name instead.
       // Sending both keeps the integration compatible across releases.
       body.put("label", category);
-      HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/downloads/magnets"))
+      URI endpoint = URI.create(normalizedBaseUrl() + "/api/v1/downloads/magnets");
+      HttpRequest request = HttpRequest.newBuilder(endpoint)
           .timeout(Duration.ofSeconds(20))
           .header("X-API-Key", apiKey)
           .header("Content-Type", "application/json")
@@ -125,7 +126,11 @@ public class AmuTorrentService {
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() / 100 != 2) {
         submittedMagnets.remove(magnet);
-        log.warn("aMuTorrent ha rebutjat '{}' (HTTP {}): {}", book.getTitulo(), response.statusCode(), response.body());
+        log.warn("aMuTorrent ha rebutjat '{}' (POST {}) (HTTP {}, Allow={}): {}", book.getTitulo(), endpoint, response.statusCode(),
+            response.headers()
+                .firstValue("Allow")
+                .orElse("-"),
+            response.body());
       } else {
         log.info("Llibre '{}' enviat a aMuTorrent", book.getTitulo());
       }
@@ -133,5 +138,9 @@ public class AmuTorrentService {
       submittedMagnets.remove(magnet);
       log.warn("Error enviant '{}' a aMuTorrent: {}", book.getTitulo(), e.getMessage());
     }
+  }
+
+  private String normalizedBaseUrl() {
+    return baseUrl == null ? "" : baseUrl.replaceFirst("/+\\z", "");
   }
 }

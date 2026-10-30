@@ -62,10 +62,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import com.opencsv.bean.ColumnPositionMappingStrategy;
 import com.opencsv.bean.CsvBindByPosition;
-import com.opencsv.bean.CsvToBean;
-import com.opencsv.bean.CsvToBeanBuilder;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
 
 import lombok.Data;
 import lombok.Setter;
@@ -273,18 +272,30 @@ public class EplCSVProcessor implements EnvironmentAware {
         ZipEntry nextEntry = null;
         while ((nextEntry = theZIS.getNextEntry()) != null) {
           LocalDateTime fechaActualizacion = mostrarDatosFicheroAProcesar(nextEntry);
-          ColumnPositionMappingStrategy<LibroCSV> ms = new ColumnPositionMappingStrategy<>();
-          ms.setType(LibroCSV.class);
           // TODO Hack while EPL does not fix their broken CSV. Apply the
           // correction while reading instead of copying the whole CSV into a
           // String; the catalogue is large enough for that copy to exhaust
           // the heap in Docker.
           try (Reader correctedReader = new ReplacingReader(theReader, ".jpg\"\"", ".jpg\"")) {
-            CsvToBean<LibroCSV> cb = new CsvToBeanBuilder<LibroCSV>(correctedReader).withType(LibroCSV.class)
-                .withMappingStrategy(ms)
-                .withSkipLines(1)
-                .build();
-            librosCSVs = cb.parse();
+            // OpenCSV 4.1 creates a Commons BeanUtils converter for every
+            // numeric field in every row. With its parallel bean parser this
+            // retains enough converter state to exhaust the Docker heap on
+            // the full catalogue. CSVReader still handles quoting and
+            // multiline fields, while these conversions are bounded and
+            // deterministic.
+            try (CSVReader csvReader = new CSVReaderBuilder(correctedReader).withSkipLines(1)
+                .build()) {
+              String[] values;
+              long lineNumber = 1;
+              while ((values = csvReader.readNext()) != null) {
+                lineNumber++;
+                try {
+                  librosCSVs.add(toLibroCSV(values));
+                } catch (RuntimeException e) {
+                  throw new IllegalArgumentException("Error parsing CSV line " + lineNumber + ", values: " + java.util.Arrays.toString(values), e);
+                }
+              }
+            }
             File librosBCKFile = Files.createTempFile(getTempDirectory(), BACKUP_FILES_PREFIX, "." + LibroCSV.serialVersionUID + BACKUP_FILES_SUFFIX)
                 .toFile();
             try (FileOutputStream theFOS = new FileOutputStream(librosBCKFile);
@@ -318,6 +329,53 @@ public class EplCSVProcessor implements EnvironmentAware {
       log.info("No hay fichero en el classpath");
     }
     return updateSpec;
+  }
+
+  private LibroCSV toLibroCSV(String[] values) {
+    LibroCSV libro = new LibroCSV();
+    libro.setId(parseInt(values, 0, 0));
+    libro.setTitulo(value(values, 1));
+    libro.setAutor(value(values, 2));
+    libro.setGeneros(value(values, 3));
+    libro.setColeccion(value(values, 4));
+    libro.setVolumen(parseBigDecimal(values, 5));
+    libro.setAnyoPublicacion(parseInt(values, 6, 0));
+    libro.setSinopsis(value(values, 7));
+    libro.setPaginas(parseInteger(values, 8));
+    libro.setRevision(parseBigDecimal(values, 9));
+    libro.setIdioma(value(values, 10));
+    libro.setPublicado(value(values, 11));
+    libro.setEstado(value(values, 12));
+    libro.setValoracion(parseBigDecimal(values, 13));
+    libro.setVotos(parseInteger(values, 14));
+    libro.setMagnetId(value(values, 15));
+    libro.setPortadaCompleta(value(values, 16));
+    libro.setEditorial(value(values, 18));
+    return libro;
+  }
+
+  private String value(String[] values,
+      int position) {
+    return position < values.length ? values[position] : null;
+  }
+
+  private int parseInt(String[] values,
+      int position,
+      int defaultValue) {
+    String value = value(values, position);
+    return StringUtils.isBlank(value) ? defaultValue : Integer.parseInt(value.trim());
+  }
+
+  private Integer parseInteger(String[] values,
+      int position) {
+    String value = value(values, position);
+    return StringUtils.isBlank(value) ? null : Integer.valueOf(value.trim());
+  }
+
+  private BigDecimal parseBigDecimal(String[] values,
+      int position) {
+    String value = value(values, position);
+    return StringUtils.isBlank(value) ? null : new BigDecimal(value.trim());
   }
 
   /**
