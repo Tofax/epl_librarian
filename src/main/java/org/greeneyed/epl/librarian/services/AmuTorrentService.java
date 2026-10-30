@@ -141,6 +141,15 @@ public class AmuTorrentService {
   }
 
   private String normalizedBaseUrl() {
-    return baseUrl == null ? "" : baseUrl.replaceFirst("/+\\z", "");
+    // Docker Compose commonly provides these settings as lower-case
+    // environment variables. Read them directly as a fallback because
+    // Spring's @Value placeholder lookup does not consistently expose
+    // lower-case underscore names across deployment modes.
+    String environmentUrl = System.getenv("amutorrent_url");
+    if (environmentUrl == null || environmentUrl.isBlank()) {
+      environmentUrl = System.getenv("AMUTorrent_URL");
+    }
+    String configuredUrl = environmentUrl == null || environmentUrl.isBlank() ? baseUrl : environmentUrl;
+    return configuredUrl == null ? "" : configuredUrl.replaceFirst("/+\\z", "");
   }
 }
