@@ -207,7 +207,13 @@ public class PreferencesService implements EnvironmentAware {
   public boolean isUpdatingCalibre() {
     readLock.lock();
     try {
-      final String property = preferences.getProperty(CALIBRE_UPDATING_KEY);
+      // Docker deployments commonly provide this setting as an environment
+      // variable. Prefer it when present, while keeping the preferences file
+      // as the fallback for native installations.
+      String property = System.getenv(CALIBRE_UPDATING_KEY);
+      if (StringUtils.isBlank(property)) {
+        property = preferences.getProperty(CALIBRE_UPDATING_KEY);
+      }
       return Boolean.parseBoolean(property);
     } finally {
       readLock.unlock();

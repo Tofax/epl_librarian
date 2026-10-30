@@ -8,7 +8,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.greeneyed.epl.librarian.model.Libro;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +36,7 @@ public class AmuTorrentService {
       .connectTimeout(Duration.ofSeconds(8))
       .build();
   private final Set<String> submittedMagnets = java.util.concurrent.ConcurrentHashMap.newKeySet();
+  private static final Pattern MAGNET_HASH = Pattern.compile("(?:^|&)xt=urn:btih:([^&]+)", Pattern.CASE_INSENSITIVE);
 
   @Value("${amutorrent_enabled:false}")
   private boolean enabled;
@@ -56,6 +60,8 @@ public class AmuTorrentService {
     int missingCatalan = 0;
     int withMagnet = 0;
     int withoutMagnet = 0;
+    int alreadyQueued = 0;
+    Set<String> queuedHashes = loadQueuedHashes();
     for (Libro book : books) {
       if (book.getInCalibre() || !isCatalan(book.getIdioma())) {
         continue;
@@ -66,6 +72,11 @@ public class AmuTorrentService {
         String magnet = toMagnet(magnetId, book);
         if (magnet != null) {
           foundMagnet = true;
+          String hash = magnetHash(magnet);
+          if (hash != null && queuedHashes.contains(hash)) {
+            alreadyQueued++;
+            break;
+          }
           if (submittedMagnets.add(magnet)) {
             withMagnet++;
             submit(magnet, book);
@@ -77,8 +88,50 @@ public class AmuTorrentService {
         withoutMagnet++;
       }
     }
-    log.info("aMuTorrent: {} llibres catalans absents de Calibre; {} amb magnet enviable i {} sense magnet", missingCatalan, withMagnet,
-        withoutMagnet);
+    log.info("aMuTorrent: {} llibres catalans absents de Calibre; {} amb magnet enviable, {} ja en cua i {} sense magnet", missingCatalan, withMagnet,
+        alreadyQueued, withoutMagnet);
+  }
+
+  private Set<String> loadQueuedHashes() {
+    Set<String> result = new HashSet<>();
+    if (!enabled || apiKey.isBlank() || instanceId.isBlank()) {
+      return result;
+    }
+    try {
+      URI endpoint = URI.create(normalizedBaseUrl() + "/api/v1/data/snapshot");
+      HttpRequest request = HttpRequest.newBuilder(endpoint)
+          .timeout(Duration.ofSeconds(10))
+          .header("X-API-Key", apiKey)
+          .header("Accept", "application/json")
+          .GET()
+          .build();
+      HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() / 100 != 2) {
+        log.warn("No s'han pogut consultar les descàrregues existents d'aMuTorrent (HTTP {})", response.statusCode());
+        return result;
+      }
+      var root = objectMapper.readTree(response.body());
+      var items = root.path("data")
+          .path("items");
+      if (items.isArray()) {
+        for (var item : items) {
+          String hash = item.path("hash")
+              .asText(null);
+          if (hash != null && !hash.isBlank()) {
+            result.add(hash.toLowerCase());
+          }
+        }
+      }
+    } catch (Exception e) {
+      log.warn("No s'han pogut consultar les descàrregues existents d'aMuTorrent: {}", e.getMessage());
+    }
+    return result;
+  }
+
+  private String magnetHash(String magnet) {
+    Matcher matcher = MAGNET_HASH.matcher(magnet);
+    return matcher.find() ? matcher.group(1)
+        .toLowerCase() : null;
   }
 
   private String toMagnet(String magnetId,
