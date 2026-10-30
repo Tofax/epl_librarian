@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Collection;
+import java.math.BigDecimal;
 import java.util.function.Function;
 
 import org.greeneyed.epl.librarian.model.Libro;
@@ -134,6 +136,12 @@ public class CalibreService {
       	(?,'epl',?)
       """;
 
+  private static final String FIND_SERIES = "SELECT id FROM series WHERE name = ?";
+  private static final String INSERT_SERIES = "INSERT INTO series (name) VALUES (?)";
+  private static final String REMOVE_BOOK_SERIES = "DELETE FROM books_series_link WHERE book = ?";
+  private static final String INSERT_BOOK_SERIES = "INSERT INTO books_series_link (book, series) VALUES (?, ?)";
+  private static final String UPDATE_SERIES_INDEX = "UPDATE books SET series_index = ? WHERE id = ?";
+
   @Getter
   private boolean enabled = false;
   @Getter
@@ -243,5 +251,74 @@ public class CalibreService {
       }
     }
     return inCalibre;
+  }
+
+  /**
+   * Copies EPL collection and volume to Calibre's native series fields. Only
+   * books matched during the normal reconciliation are touched.
+   */
+  public void updateSeries(Collection<Libro> eplBooks) {
+    if (!enabled || !preferencesService.isUpdatingCalibre()) {
+      return;
+    }
+
+    int updated = 0;
+    try (Connection con = DriverManager.getConnection(url, sqliteConfig().toProperties());
+        PreparedStatement findSeries = con.prepareStatement(FIND_SERIES);
+        PreparedStatement insertSeries = con.prepareStatement(INSERT_SERIES, Statement.RETURN_GENERATED_KEYS);
+        PreparedStatement removeBookSeries = con.prepareStatement(REMOVE_BOOK_SERIES);
+        PreparedStatement insertBookSeries = con.prepareStatement(INSERT_BOOK_SERIES);
+        PreparedStatement updateSeriesIndex = con.prepareStatement(UPDATE_SERIES_INDEX)) {
+      con.setAutoCommit(false);
+      for (Libro book : eplBooks) {
+        if (book.getColeccion() == null || book.getColeccion()
+            .isBlank()) {
+          continue;
+        }
+        Integer calibreId = eplToCalibre.get(book.getId());
+        if (calibreId == null) {
+          continue;
+        }
+
+        long seriesId;
+        findSeries.setString(1, book.getColeccion()
+            .trim());
+        try (ResultSet rs = findSeries.executeQuery()) {
+          if (rs.next()) {
+            seriesId = rs.getLong(1);
+          } else {
+            insertSeries.setString(1, book.getColeccion()
+                .trim());
+            insertSeries.executeUpdate();
+            try (ResultSet keys = insertSeries.getGeneratedKeys()) {
+              if (!keys.next()) {
+                throw new SQLException("No se pudo obtener el id de la serie creada");
+              }
+              seriesId = keys.getLong(1);
+            }
+          }
+        }
+
+        removeBookSeries.setInt(1, calibreId);
+        removeBookSeries.executeUpdate();
+        insertBookSeries.setInt(1, calibreId);
+        insertBookSeries.setLong(2, seriesId);
+        insertBookSeries.executeUpdate();
+
+        BigDecimal volume = book.getVolumen();
+        if (volume == null) {
+          updateSeriesIndex.setNull(1, java.sql.Types.REAL);
+        } else {
+          updateSeriesIndex.setBigDecimal(1, volume);
+        }
+        updateSeriesIndex.setInt(2, calibreId);
+        updateSeriesIndex.executeUpdate();
+        updated++;
+      }
+      con.commit();
+      log.info("Actualizadas {} series de libros en Calibre", updated);
+    } catch (Exception e) {
+      log.error("Error actualizando las series en Calibre: {}", e.getMessage(), e);
+    }
   }
 }

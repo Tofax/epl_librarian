@@ -102,6 +102,8 @@ La comprobación mira el título exacto del libro y sus autores, por lo que pued
 ### Actualización de la biblioteca de Calibre (por defecto, desactivada)
 Si queremos que el programa actualice la base de datos de Calibre con los identificadores de los libros de EPubLibre, podemos hacerlo configurando la propiedad ```calibre_update``` a true. De esta forma, cuando encuentre un libro en Calibre que se encuentre en la lista de libros de EPubLibre pero no tenga bien configurado su epl_id, actualizará la BDD del Calibre para ponérselo. Los libros que tienen configurado el epl_id correctamente se reconocen mucho más rápido durante la sincronización.
 
+Con ```calibre_update=true```, la sincronización también copia la colección del CSV de EPL al campo de serie de Calibre y el volumen al índice de la serie. El botón **Integración con Calibre** de EPL Librarian ejecuta esta sincronización cuando queramos. Solo se actualizan libros asociados de forma inequívoca; si el CSV no tiene colección para un libro, no se borra la serie existente.
+
 
 ### Sincronización con Calibre en ejecución
 El programa sincroniza automáticamente los datos de Calibre al arrancar, pero también es posible actualizar los datos mientras el programa está en marcha haciendo click con el ratón sobre el botón de "Integración con Calibre":

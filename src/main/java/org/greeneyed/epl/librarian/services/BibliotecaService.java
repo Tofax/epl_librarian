@@ -512,6 +512,26 @@ public class BibliotecaService {
               .toList();
         }
 
+        // EPL sometimes prefixes the title with the saga name (for example
+        // "Blade Runner. Els androides somien xais elèctrics?") while Calibre
+        // stores only the work title. Accept that form only when the author,
+        // language and a unique containment match all agree.
+        if (candidatos.isEmpty()) {
+          String calibreTitle = Libro.tituloComparable(titulo);
+          candidatos = libreria.stream()
+              .filter(libro -> calibreLanguage == null || calibreLanguage.getEplLabel()
+                  .equals(libro.getIdiomaNormalizado()))
+              .filter(libro -> libro.getListaAutoresNormalizados()
+                  .containsAll(autoresSet) && autoresSet.containsAll(libro.getListaAutoresNormalizados()))
+              .filter(libro -> {
+                String eplTitle = libro.getTituloComparable();
+                String shorter = eplTitle.length() <= calibreTitle.length() ? eplTitle : calibreTitle;
+                String longer = eplTitle.length() <= calibreTitle.length() ? calibreTitle : eplTitle;
+                return shorter.length() >= 12 && longer.contains(shorter) && shorter.length() * 100 >= longer.length() * 65;
+              })
+              .toList();
+        }
+
         // Calibre pot tenir l'idioma buit o usar un codi que no tenim
         // mapejat. Si el títol base no apareix amb el filtre d'idioma,
         // repetim la consulta sense idioma; l'autor i la unicitat continuen
@@ -611,6 +631,7 @@ public class BibliotecaService {
       // Actualizamos segun los datos que tenemos
       log.info("Recopilando libros de Calibre...");
       Set<Integer> enCalibre = calibreService.updateLibros(SEARCH_AND_UDPATE_BOOK);
+      calibreService.updateSeries(libreria);
       calibreLinkService.save(calibreService.getEplToCalibre());
       List<Libro> librosYaNoEnCablibre = libreria.stream()
           .filter(Libro::getInCalibre)
