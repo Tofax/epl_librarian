@@ -34,6 +34,17 @@
             </b-select>
         </b-field>      
     </div>
+    <b-field v-if="integracioncalibre" id="magnets_catalans_faltants" horizontal>
+      <b-tooltip
+        :label="magnetsCatalansFaltants ? 'Feu clic per mostrar tots els llibres' : 'Feu clic per mostrar els magnets catalans que us falten'"
+        position="is-right"
+        dashed
+      >
+        <b-switch v-model="magnetsCatalansFaltants" @input="cambioMagnetsCatalansFaltants()">
+          Només magnets catalans que em falten
+        </b-switch>
+      </b-tooltip>
+    </b-field>
     <b-table
       ref="table"
       :data="data"
@@ -365,6 +376,7 @@ export default {
       soloGenerosFavoritos: false,
       soloNoEnPropiedad: false,
       ocultarDescartados: false,
+      magnetsCatalansFaltants: false,
       fechaBase: null,
       timeAgo: new TimeAgo('ca'),
     };
@@ -394,6 +406,7 @@ export default {
         `filtro_fecha=${this.porFechaBase()}`,
         `solo_no_en_propiedad=${this.soloNoEnPropiedad}`,
         `ocultar_descartados=${this.ocultarDescartados}`,
+        `catalans_faltants=${this.magnetsCatalansFaltants}`,
         `por_pagina=${this.perPage}`
       ].join("&");
 
@@ -511,6 +524,10 @@ export default {
       this.loadAsyncData();
     },
     cambioOcultarDescartados() {
+      this.loadAsyncData();
+    },
+    cambioMagnetsCatalansFaltants() {
+      this.page = 1;
       this.loadAsyncData();
     },
     descartar(libro) {

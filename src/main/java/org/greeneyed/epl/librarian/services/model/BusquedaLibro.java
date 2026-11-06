@@ -49,6 +49,7 @@ public class BusquedaLibro {
   private final boolean soloGenerosFavoritos;
   private final Boolean soloNoEnPropiedad;
   private final Boolean ocultarDescartados;
+  private final boolean catalansFaltants;
 
   public QueryOptions getQueryOptions() {
     return reversed ? ordering.getQueryOptionsDescending() : ordering.getQueryOptionsAscending();
@@ -61,6 +62,8 @@ public class BusquedaLibro {
         getPartialQuery(getFiltroColeccion(), Libro.LIBRO_COLECCION), getPartialQuery(getFiltroGenero(), Libro.LIBRO_GENERO),
         //
         getNoEnCalibreQuery(),
+        //
+        getCatalansFaltantsQuery(),
         //
         getNoDescartadosQuery(),
         //
@@ -101,6 +104,15 @@ public class BusquedaLibro {
       return equal(Libro.LIBRO_EN_CALIBRE, Boolean.FALSE);
     } else
       return null;
+  }
+
+  public Query<Libro> getCatalansFaltantsQuery() {
+    if (catalansFaltants) {
+      return and(equal(Libro.LIBRO_IDIOMA, Libro.flattenToAscii("Catalán")),
+          equal(Libro.LIBRO_EN_CALIBRE, Boolean.FALSE),
+          equal(Libro.LIBRO_TEN_MAGNET, Boolean.TRUE));
+    }
+    return null;
   }
 
   public Query<Libro> getNoDescartadosQuery() {

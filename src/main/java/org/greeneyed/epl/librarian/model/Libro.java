@@ -42,6 +42,7 @@ public class Libro {
   private static final String LIBRO_PUBLICADO_PARAM = "libroPUBLICADO";
   private static final String LIBRO_EN_CALIBRE_PARAM = "libroEN_CALIBRE";
   private static final String LIBRO_DESCARTADO_PARAM = "libroDESCARTADO";
+  private static final String LIBRO_TEN_MAGNET_PARAM = "libroTEN_MAGNET";
 
   public static final SimpleAttribute<Libro, Integer> LIBRO_ID = attribute(Libro.class, Integer.class, LIBRO_ID_PARAM, Libro::getId);
   public static final SimpleAttribute<Libro, String> LIBRO_TITULO = attribute(Libro.class, String.class, LIBRO_TITULO_PARAM,
@@ -60,6 +61,8 @@ public class Libro {
       Libro::getInCalibre);
   public static final SimpleAttribute<Libro, Boolean> LIBRO_DESCARTADO = attribute(Libro.class, Boolean.class, LIBRO_DESCARTADO_PARAM,
       Libro::getDescartado);
+  public static final SimpleAttribute<Libro, Boolean> LIBRO_TEN_MAGNET = attribute(Libro.class, Boolean.class, LIBRO_TEN_MAGNET_PARAM,
+      libro -> libro.getMagnetId() != null && !libro.getMagnetId().isBlank());
   public static final SimpleNullableAttribute<Libro, ChronoLocalDate> LIBRO_PUBLICADO = nullableAttribute(Libro.class, ChronoLocalDate.class,
       LIBRO_PUBLICADO_PARAM, Libro::getFechaPublicacion);
   public static final SimpleNullableAttribute<Libro, String> LIBRO_COLECCION = nullableAttribute(Libro.class, String.class, LIBRO_COLECCION_PARAM,
