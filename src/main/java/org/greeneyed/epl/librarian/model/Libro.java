@@ -61,7 +61,7 @@ public class Libro {
       Libro::getInCalibre);
   public static final SimpleAttribute<Libro, Boolean> LIBRO_DESCARTADO = attribute(Libro.class, Boolean.class, LIBRO_DESCARTADO_PARAM,
       Libro::getDescartado);
-  public static final SimpleAttribute<Libro, Boolean> LIBRO_TEN_MAGNET = new SimpleAttribute<Libro, Boolean>(Libro.class,
+  public static final SimpleAttribute<Libro, Boolean> LIBRO_TEN_MAGNET = new SimpleAttribute<Libro, Boolean>(Libro.class, Boolean.class,
       LIBRO_TEN_MAGNET_PARAM) {
     @Override
     public Boolean getValue(Libro libro, com.googlecode.cqengine.query.option.QueryOptions queryOptions) {
