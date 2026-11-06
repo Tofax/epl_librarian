@@ -61,8 +61,13 @@ public class Libro {
       Libro::getInCalibre);
   public static final SimpleAttribute<Libro, Boolean> LIBRO_DESCARTADO = attribute(Libro.class, Boolean.class, LIBRO_DESCARTADO_PARAM,
       Libro::getDescartado);
-  public static final SimpleAttribute<Libro, Boolean> LIBRO_TEN_MAGNET = attribute(Libro.class, Boolean.class, LIBRO_TEN_MAGNET_PARAM,
-      libro -> libro.getMagnetId() != null && !libro.getMagnetId().isBlank());
+  public static final SimpleAttribute<Libro, Boolean> LIBRO_TEN_MAGNET = new SimpleAttribute<Libro, Boolean>(Libro.class,
+      LIBRO_TEN_MAGNET_PARAM) {
+    @Override
+    public Boolean getValue(Libro libro, com.googlecode.cqengine.query.option.QueryOptions queryOptions) {
+      return libro.getMagnetId() != null && !libro.getMagnetId().isBlank();
+    }
+  };
   public static final SimpleNullableAttribute<Libro, ChronoLocalDate> LIBRO_PUBLICADO = nullableAttribute(Libro.class, ChronoLocalDate.class,
       LIBRO_PUBLICADO_PARAM, Libro::getFechaPublicacion);
   public static final SimpleNullableAttribute<Libro, String> LIBRO_COLECCION = nullableAttribute(Libro.class, String.class, LIBRO_COLECCION_PARAM,
