@@ -44,7 +44,24 @@
           Només magnets catalans que em falten
         </b-switch>
       </b-tooltip>
+      <p v-if="magnetsCatalansFaltants" class="control">
+        <b-button type="is-link" icon-pack="fa" icon-left="list" :loading="carregantLlistatMagnets" @click="mostrarLlistatMagnets">Llistat de magnets</b-button>
+      </p>
     </b-field>
+    <b-modal :active.sync="llistatMagnetsVisible" has-modal-card trap-focus>
+      <div class="modal-card" style="width: 900px; max-width: 90vw;">
+        <header class="modal-card-head"><p class="modal-card-title">Magnets catalans que us falten</p></header>
+        <section class="modal-card-body">
+          <p class="mb-2">{{ magnetsLlistat ? magnetsLlistat.split('\n').length : 0 }} magnets, un per línia:</p>
+          <b-input type="textarea" :value="magnetsLlistat" rows="15" readonly></b-input>
+        </section>
+        <footer class="modal-card-foot">
+          <b-button type="is-primary" icon-pack="fa" icon-left="copy" @click="copiarLlistatMagnets">Copiar</b-button>
+          <b-button type="is-info" icon-pack="fa" icon-left="download" @click="descarregarLlistatMagnets">Descarregar .txt</b-button>
+          <b-button @click="llistatMagnetsVisible = false">Tancar</b-button>
+        </footer>
+      </div>
+    </b-modal>
     <b-table
       ref="table"
       :data="data"
@@ -377,6 +394,9 @@ export default {
       soloNoEnPropiedad: false,
       ocultarDescartados: false,
       magnetsCatalansFaltants: false,
+      llistatMagnetsVisible: false,
+      carregantLlistatMagnets: false,
+      magnetsLlistat: "",
       fechaBase: null,
       timeAgo: new TimeAgo('ca'),
     };
@@ -529,6 +549,25 @@ export default {
     cambioMagnetsCatalansFaltants() {
       this.page = 1;
       this.loadAsyncData();
+    },
+    async mostrarLlistatMagnets() {
+      this.carregantLlistatMagnets = true;
+      try {
+        const params = new URLSearchParams({ orden: this.sortField, numero_pagina: "1", desc: this.sortOrder == "desc" ? "true" : "false", filtro_titulo: this.filterOnCriteria("POR_TITULO"), filtro_coleccion: this.filterOnCriteria("POR_COLECCION"), filtro_autor: this.filterOnCriteria("POR_AUTOR"), filtro_genero: this.filterOnCriteria("POR_GENERO"), filtro_idioma: this.filterOnCriteria("POR_IDIOMA"), favoritos_autores: String(this.soloAutoresFavoritos), favoritos_idiomas: String(this.soloIdiomasFavoritos), favoritos_generos: String(this.soloGenerosFavoritos), filtro_fecha: String(this.porFechaBase() || ""), solo_no_en_propiedad: String(this.soloNoEnPropiedad), ocultar_descartados: String(this.ocultarDescartados), catalans_faltants: "true", por_pagina: "100" });
+        const first = await axios.get(`/librarian/libros?${params.toString()}`);
+        const books = [...first.data.results];
+        for (let page = 2; page <= Math.ceil(first.data.total / 100); page++) { params.set("numero_pagina", String(page)); books.push(...(await axios.get(`/librarian/libros?${params.toString()}`)).data.results); }
+        this.magnetsLlistat = [...new Set(books.flatMap(book => (book.magnet_ids || []).map(id => this.$options.filters.toMagnet(id, book))))].join("\n");
+        this.llistatMagnetsVisible = true;
+      } finally { this.carregantLlistatMagnets = false; }
+    },
+    copiarLlistatMagnets() {
+      navigator.clipboard.writeText(this.magnetsLlistat);
+      this.$buefy.notification.open({ type: "is-success", message: "Magnets copiats al porta-retalls", duration: 2500 });
+    },
+    descarregarLlistatMagnets() {
+      const url = URL.createObjectURL(new Blob([this.magnetsLlistat + "\n"], { type: "text/plain;charset=utf-8" }));
+      const link = document.createElement("a"); link.href = url; link.download = "magnets-catalans-faltants.txt"; link.click(); URL.revokeObjectURL(url);
     },
     descartar(libro) {
       var formData = new FormData();
