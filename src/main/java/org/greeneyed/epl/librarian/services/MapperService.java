@@ -10,6 +10,7 @@ public interface MapperService {
 
   @Mapping(ignore = true, target = "listaGeneros")
   @Mapping(ignore = true, target = "inCalibre")
+  @Mapping(ignore = true, target = "calibreManual")
   @Mapping(ignore = true, target = "listaAutores")
   @Mapping(ignore = true, target = "listaMagnetIds")
   @Mapping(ignore = true, target = "descartado")

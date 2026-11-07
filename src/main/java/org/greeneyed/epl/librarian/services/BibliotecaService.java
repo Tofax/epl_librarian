@@ -657,6 +657,18 @@ public class BibliotecaService {
       // Actualizamos segun los datos que tenemos
       log.info("Recopilando libros de Calibre...");
       Set<Integer> enCalibre = calibreService.updateLibros(SEARCH_AND_UDPATE_BOOK);
+      Set<Integer> idsActualesEpl = libreria.stream()
+          .map(Libro::getId)
+          .collect(Collectors.toSet());
+      enCalibre.retainAll(idsActualesEpl);
+      Map<Integer, Boolean> manualOverrides = calibreLinkService.loadManualOverrides();
+      manualOverrides.forEach((id, value) -> {
+        if (Boolean.TRUE.equals(value)) {
+          enCalibre.add(id);
+        } else {
+          enCalibre.remove(id);
+        }
+      });
       calibreService.updateSeries(libreria);
       calibreLinkService.save(calibreService.getEplToCalibre());
       List<Libro> librosYaNoEnCablibre = libreria.stream()
@@ -675,8 +687,24 @@ public class BibliotecaService {
       libreria.removeAll(librosYaNoEnCablibre);
       librosYaNoEnCablibre.forEach(libro -> libro.setInCalibre(Boolean.FALSE));
       libreria.addAll(librosYaNoEnCablibre);
+      libreria.forEach(libro -> libro.setCalibreManual(manualOverrides.containsKey(libro.getId())));
       log.debug("Actualizados {} libros que ya no tenemos en Calibre.", librosYaNoEnCablibre.size());
       log.info("Recopilados {} libros de Calibre", enCalibre.size());
+    } finally {
+      writeLock.unlock();
+    }
+  }
+
+  public void setCalibreManual(Integer libroId, boolean inCalibre) {
+    writeLock.lock();
+    try {
+      calibreLinkService.setManualOverride(libroId, inCalibre);
+      findLibro(libroId).ifPresent(libro -> {
+        libreria.remove(libro);
+        libro.setInCalibre(inCalibre);
+        libro.setCalibreManual(true);
+        libreria.add(libro);
+      });
     } finally {
       writeLock.unlock();
     }

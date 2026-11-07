@@ -258,11 +258,15 @@
           </b-tooltip>
         </template>
         <template v-slot="props">
-          <b-icon
-            pack="fa"
-            :type="props.row.inCalibre ? 'is-success' : 'is-danger'"
-            :icon="props.row.inCalibre ? 'check' : 'times'"
-          ></b-icon>
+          <b-tooltip :label="props.row.calibreManual ? 'Confirmat manualment: feu clic per marcar el contrari' : (props.row.inCalibre ? 'Detectat a Calibre: feu clic per marcar que no hi és' : 'No detectat a Calibre: feu clic per confirmar que hi és')">
+            <b-button type="is-text" size="is-small" @click="confirmarCalibre(props.row)">
+              <b-icon
+                pack="fa"
+                :type="props.row.inCalibre ? 'is-success' : 'is-danger'"
+                :icon="props.row.inCalibre ? 'check' : 'times'"
+              ></b-icon>
+            </b-button>
+          </b-tooltip>
         </template>
       </b-table-column>
       <b-table-column
@@ -549,6 +553,21 @@ export default {
     cambioMagnetsCatalansFaltants() {
       this.page = 1;
       this.loadAsyncData();
+    },
+    confirmarCalibre(libro) {
+      const inCalibre = !libro.inCalibre;
+      const formData = new FormData();
+      formData.append("id", libro.id);
+      formData.append("inCalibre", String(inCalibre));
+      axios.post("/librarian/preferences/calibre_manual", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      }).then(() => {
+        libro.inCalibre = inCalibre;
+        libro.calibreManual = true;
+      }).catch(error => {
+        this.$buefy.notification.open({ type: "is-danger", message: "No s’ha pogut desar la confirmació de Calibre." });
+        throw error;
+      });
     },
     async mostrarLlistatMagnets() {
       this.carregantLlistatMagnets = true;

@@ -120,6 +120,9 @@ public class Libro {
 
   private Boolean inCalibre = Boolean.FALSE;
 
+  /** True when the Calibre state was explicitly confirmed by the user. */
+  private Boolean calibreManual = Boolean.FALSE;
+
   private Boolean descartado = Boolean.FALSE;
 
   @JsonIgnore
@@ -238,7 +241,14 @@ public class Libro {
    * the remaining title and language to be unambiguous.
    */
   public static String tituloComparableSinVolumen(String unNombre) {
-    return tituloComparable(unNombre).replaceAll("(?:tom|tomo|volum|vol|volume|part|parte)(?:[ivxlcdm]+|[0-9]+)$", "");
+    // EPL often appends the translator or edition in parentheses, while
+    // Calibre usually stores only the work title (e.g. "Poemes (trad. ...)").
+    // Remove only trailing annotations before comparing, so parentheses that
+    // are part of the actual title are not discarded in the main comparison.
+    String withoutTrailingAnnotation = flattenToAscii(unNombre)
+        .replaceAll("\\s*(?:\\([^)]*\\)|\\[[^]]*\\])\\s*$", "");
+    return tituloComparable(withoutTrailingAnnotation)
+        .replaceAll("(?:tom|tomo|volum|vol|volume|part|parte)(?:[ivxlcdm]+|[0-9]+)$", "");
   }
 
   public static String flattenToAscii(String string) {

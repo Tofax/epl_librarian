@@ -75,6 +75,13 @@ public class PreferencesAPIController {
     return OK_BUILDER.build();
   }
 
+  @PostMapping(value = "/calibre_manual", produces = MediaType.TEXT_HTML_VALUE)
+  public ResponseEntity<String> confirmarCalibre(@RequestParam(name = "id") Integer libroId,
+      @RequestParam(name = "inCalibre") boolean inCalibre) {
+    bibliotecaService.setCalibreManual(libroId, inCalibre);
+    return OK_BUILDER.body("OK");
+  }
+
   @PostMapping(value = "/autoresFavoritos", produces = MediaType.TEXT_HTML_VALUE)
   public ResponseEntity<String> guardarAutoresFavoritos(@RequestParam Set<String> autoresFavoritos,
       @RequestParam Set<String> autoresNoFavoritos) {
