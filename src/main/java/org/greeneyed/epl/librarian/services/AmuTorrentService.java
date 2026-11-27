@@ -49,7 +49,7 @@ public class AmuTorrentService {
   private String instanceId;
   @Value("${amutorrent_client_id:qbittorrent}")
   private String clientId;
-  @Value("${amutorrent_category:EPL}")
+  @Value("${amutorrent_category:epub}")
   private String category;
 
   public void submitMissingCatalanBooks(Iterable<Libro> books) {

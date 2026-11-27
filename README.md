@@ -116,7 +116,7 @@ Esta funcionalidad es útil cuando estamos añadiendo al Calibre libros que nos 
 
 La comparación con Calibre utiliza el identificador EPL cuando existe y, para libros añadidos desde otras fuentes, una coincidencia única por título, autor e idioma. Las vinculaciones encontradas se guardan en `calibre-links.json` junto a `preferences.properties`, sin modificar `metadata.db` cuando Calibre está en modo solo lectura.
 
-La descarga automática de libros catalanes que falten es opcional y permanece desactivada por defecto. Para activarla hay que configurar `amutorrent_enabled=true`, `amutorrent_url`, `amutorrent_api_key`, `amutorrent_instance_id` y opcionalmente `amutorrent_category`. EPL Librarian enviará el primer magnet del libro a `/api/v1/downloads/magnets` de aMuTorrent únicamente cuando la integración con Calibre esté activa y el libro no consti a la biblioteca.
+La descarga automática de libros catalanes que falten es opcional y permanece desactivada por defecto. Para activarla hay que configurar `amutorrent_enabled=true`, `amutorrent_url`, `amutorrent_api_key`, `amutorrent_instance_id` y opcionalmente `amutorrent_category` (por defecto, `epub`). EPL Librarian enviará el primer magnet del libro a `/api/v1/downloads/magnets` de aMuTorrent con la etiqueta `epub`, únicamente cuando la integración con Calibre esté activa y el libro no consti a la biblioteca.
 
 ## Funcionamiento
 El programa ofrece varios listados
